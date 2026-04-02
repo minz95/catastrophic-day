@@ -1,0 +1,26 @@
+{
+  "name": "catastrophic-day",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "ServerScriptService"
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$path": "StarterPlayer"
+    },
+
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$path": "StarterGui"
+    },
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$path": "ReplicatedStorage"
+    }
+  }
+}

@@ -1,0 +1,271 @@
+-- FarmingClient.client.lua
+-- Proximity detection, pickup prompt, contest UI, and steal prompt.
+-- Resolves: Issue #18, #64
+
+local Players           = game:GetService("Players")
+local UserInputService  = game:GetService("UserInputService")
+local RunService        = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local Constants    = require(ReplicatedStorage.Shared.Constants)
+local RemoteEvents = require(ReplicatedStorage.RemoteEvents)
+
+local LocalPlayer = Players.LocalPlayer
+local Camera      = workspace.CurrentCamera
+
+local FarmingClient = {}
+
+-- ─── State ────────────────────────────────────────────────────────────────────
+
+local _enabled        = false
+local _inventory      = {}
+local _nearestItem    = nil   -- Part
+local _nearestPlayer  = nil   -- Player
+local _contestItemId  = nil
+local _contestPresses = 0
+local _heartbeatConn  = nil
+local _promptGui      = nil   -- BillboardGui attached to nearest item
+local _stealGui       = nil   -- ScreenGui for steal prompt/defense
+
+-- ─── Inventory (updated by server) ───────────────────────────────────────────
+
+RemoteEvents.InventoryUpdated.OnClientEvent:Connect(function(inventory)
+	_inventory = inventory
+	-- Update inventory HUD (implemented in UIManager / FarmingUI)
+	local inventoryBar = LocalPlayer.PlayerGui:FindFirstChild("FarmingUI")
+	if inventoryBar then
+		local bar = inventoryBar:FindFirstChild("InventoryBar")
+		if bar then
+			for i = 1, Constants.INVENTORY_SIZE do
+				local slot = bar:FindFirstChild("Slot" .. i)
+				if slot then
+					local label = slot:FindFirstChildOfClass("TextLabel")
+					if label then
+						local item = inventory[i]
+						label.Text = item and (require(
+							game.ReplicatedStorage.Shared.ItemTypes
+						).byName[item] and
+						require(game.ReplicatedStorage.Shared.ItemConfig)[item] and
+						require(game.ReplicatedStorage.Shared.ItemConfig)[item].icon or "?") or ""
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- ─── Proximity scan ───────────────────────────────────────────────────────────
+
+local function _scanNearby()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return nil, nil end
+
+	local nearestItem   = nil
+	local nearestItemDist = math.huge
+	local nearestPlayer = nil
+	local nearestPlayerDist = math.huge
+
+	-- Scan items
+	local parts = workspace:GetPartBoundsInRadius(root.Position, Constants.PICKUP_RANGE)
+	for _, part in ipairs(parts) do
+		if part.Name:sub(1, 5) == "Item_" then
+			local d = (part.Position - root.Position).Magnitude
+			if d < nearestItemDist then
+				nearestItemDist = d
+				nearestItem = part
+			end
+		end
+	end
+
+	-- Scan players (for steal)
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player == LocalPlayer then continue end
+		local otherChar = player.Character
+		local otherRoot = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
+		if not otherRoot then continue end
+		local d = (otherRoot.Position - root.Position).Magnitude
+		if d <= Constants.STEAL_RANGE and d < nearestPlayerDist then
+			nearestPlayerDist = d
+			nearestPlayer = player
+		end
+	end
+
+	return nearestItem, nearestPlayer
+end
+
+-- ─── Pickup prompt BillboardGui ───────────────────────────────────────────────
+
+local function _showPrompt(part)
+	if _promptGui and _promptGui.Parent then
+		_promptGui.Adornee = part
+		return
+	end
+	_promptGui = Instance.new("BillboardGui")
+	_promptGui.Size        = UDim2.new(0, 120, 0, 40)
+	_promptGui.StudsOffset = Vector3.new(0, 2, 0)
+	_promptGui.Adornee     = part
+	_promptGui.AlwaysOnTop = true
+	_promptGui.Parent      = part
+
+	local label = Instance.new("TextLabel")
+	label.Size            = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text            = "[SPACE] Pick Up"
+	label.TextColor3      = Color3.new(1, 1, 1)
+	label.TextScaled      = true
+	label.Font            = Enum.Font.GothamBold
+	label.Parent          = _promptGui
+end
+
+local function _hidePrompt()
+	if _promptGui then
+		_promptGui:Destroy()
+		_promptGui = nil
+	end
+end
+
+local function _flashPromptDenied()
+	if not _promptGui then return end
+	local label = _promptGui:FindFirstChildOfClass("TextLabel")
+	if not label then return end
+	label.TextColor3 = Color3.fromRGB(255, 80, 80)
+	task.delay(0.5, function()
+		if label and label.Parent then
+			label.TextColor3 = Color3.new(1, 1, 1)
+		end
+	end)
+end
+
+-- ─── SPACE handler ────────────────────────────────────────────────────────────
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not _enabled then return end
+
+	if input.KeyCode == Enum.KeyCode.Space then
+		if _contestItemId then
+			-- We're in a contest — count presses
+			_contestPresses = _contestPresses + 1
+			RemoteEvents.RequestContest:InvokeServer(_contestItemId, _contestPresses)
+			return
+		end
+
+		if _nearestItem then
+			local result = RemoteEvents.RequestPickup:InvokeServer(tostring(_nearestItem))
+			if result == "ok" then
+				_hidePrompt()
+				_nearestItem = nil
+			elseif result == "contested" then
+				_contestItemId  = tostring(_nearestItem)
+				_contestPresses = 1
+			else
+				_flashPromptDenied()
+			end
+		elseif _nearestPlayer then
+			-- Long-press handled below via InputEnded
+		end
+	end
+end)
+
+-- Long-press SPACE for steal (hold ~1s near another player)
+local _spaceHoldStart = nil
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not _enabled then return end
+	if input.KeyCode == Enum.KeyCode.Space and _nearestPlayer and not _nearestItem then
+		_spaceHoldStart = tick()
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.Space then
+		if _spaceHoldStart and (tick() - _spaceHoldStart) >= 0.9 and _nearestPlayer then
+			RemoteEvents.RequestSteal:InvokeServer(_nearestPlayer.UserId)
+		end
+		_spaceHoldStart = nil
+	end
+end)
+
+-- ─── Contest UI listener ──────────────────────────────────────────────────────
+
+RemoteEvents.ContestUpdate.OnClientEvent:Connect(function(itemId, p1, p2)
+	_contestItemId = itemId
+	-- TODO: update BillboardGui above the item with live press counts
+	-- For now just print (full UI in FarmingUI issue)
+	print(string.format("[Contest] %d vs %d", p1.count, p2.count))
+end)
+
+RemoteEvents.ContestResult.OnClientEvent:Connect(function(itemId, winnerUserId)
+	if _contestItemId == itemId then
+		_contestItemId  = nil
+		_contestPresses = 0
+		if winnerUserId == LocalPlayer.UserId then
+			print("[Contest] YOU WIN!")
+		else
+			print("[Contest] You lost.")
+		end
+	end
+end)
+
+-- ─── Steal listener (defend prompt) ──────────────────────────────────────────
+
+RemoteEvents.StealAttempt.OnClientEvent:Connect(function(thiefName)
+	-- Show defend UI
+	print(string.format("[Steal] %s is trying to steal from you! Press SPACE x3!", thiefName))
+	-- TODO: proper ScreenGui overlay (Issue #44 / #64 UI)
+	local defendPresses = 0
+	local defended = false
+	local conn
+	conn = UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then return end
+		if input.KeyCode == Enum.KeyCode.Space then
+			defendPresses = defendPresses + 1
+			if defendPresses >= Constants.STEAL_DEFEND_PRESSES then
+				defended = true
+				RemoteEvents.DefendSteal:InvokeServer()
+				conn:Disconnect()
+			end
+		end
+	end)
+	task.delay(Constants.STEAL_DEFEND_WINDOW, function()
+		conn:Disconnect()
+	end)
+end)
+
+-- ─── Heartbeat scan ───────────────────────────────────────────────────────────
+
+local function _tick()
+	local item, player = _scanNearby()
+	_nearestItem   = item
+	_nearestPlayer = player
+
+	local isFull = #_inventory >= Constants.INVENTORY_SIZE
+
+	if item and not isFull then
+		_showPrompt(item)
+	else
+		_hidePrompt()
+	end
+end
+
+-- ─── Enable / Disable ─────────────────────────────────────────────────────────
+
+function FarmingClient.enable()
+	_enabled = true
+	if not _heartbeatConn then
+		_heartbeatConn = RunService.Heartbeat:Connect(function()
+			if _enabled then _tick() end
+		end)
+	end
+end
+
+function FarmingClient.disable()
+	_enabled = false
+	_hidePrompt()
+	_nearestItem    = nil
+	_nearestPlayer  = nil
+	_contestItemId  = nil
+	_contestPresses = 0
+end
+
+return FarmingClient
