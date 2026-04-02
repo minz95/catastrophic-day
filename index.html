@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scavenger Racers 3D - Hyper Tuned</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
+        .pointer-events-auto { pointer-events: auto; }
+        .hud-text { text-shadow: 2px 2px 0 #000; color: white; font-weight: bold; }
+        
+        /* Crafting UI */
+        #crafting-screen {
+            background: rgba(0,0,0,0.9);
+            pointer-events: auto;
+            display: none; /* Toggled via JS */
+        }
+        
+        .slot {
+            width: 80px; height: 80px; border: 2px dashed #666; background: rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.2s; position: relative; text-align: center;
+        }
+        .slot.filled { border: 2px solid #4ade80; background: rgba(74, 222, 128, 0.2); }
+        .slot:hover { border-color: white; }
+
+        .item-card {
+            width: 70px; height: 80px; background: #333; border: 1px solid #555;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 9px; color: white; cursor: pointer; margin: 3px;
+            text-align: center; overflow: hidden; position: relative;
+        }
+        .item-card:hover { background: #555; }
+        .item-card.selected { border: 2px solid #fbbf24; }
+        
+        /* Stat Bar */
+        .stat-row { display: flex; align-items: center; margin-bottom: 8px; width: 100%; }
+        .stat-label { width: 60px; font-size: 0.8rem; color: #aaa; text-align: right; margin-right: 8px; font-weight: bold; }
+        .stat-track { flex-grow: 1; height: 12px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #444; }
+        .stat-fill { height: 100%; background: #fbbf24; width: 5%; transition: width 0.3s, background-color 0.3s; }
+
+        /* Race Countdown Overlay */
+        #countdown-layer {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.3); pointer-events: none;
+        }
+        #countdown-text {
+            font-size: 15rem; font-weight: 900; color: #fbbf24; 
+            text-shadow: 4px 4px 0 #000; animation: ping 1s infinite;
+        }
+        @keyframes ping { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+        /* Finish Overlay */
+        #finish-layer {
+            position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.7); pointer-events: auto; z-index: 100;
+        }
+        #finish-text {
+            font-size: 6rem; font-weight: 900; color: #4ade80; 
+            text-shadow: 0 0 20px #4ade80; margin-bottom: 20px;
+        }
+
+        /* Boost Gauge */
+        #boost-container {
+            width: 300px; height: 20px; background: #333; border: 2px solid #fff;
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            display: none; border-radius: 10px; overflow: hidden;
+        }
+        #boost-bar {
+            width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ffff00);
+            transform-origin: left; transform: scaleX(0); transition: transform 0.1s linear;
+        }
+
+        #crafting-warning {
+            display: none; color: #ff4444; font-size: 1.5rem; font-weight: bold; 
+            text-shadow: 1px 1px 2px black; animation: blink 0.5s infinite alternate;
+        }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
+        
+        /* Zone Indicators */
+        .zone-warning {
+            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            font-weight: bold; font-size: 1.2rem; display: none; text-shadow: 1px 1px 0 #000;
+        }
+        #mud-warning { color: #8B4513; }
+        #updraft-indicator { color: #87CEEB; top: 25%; }
+        
+        /* Farming Hint */
+        #farming-hint {
+            position: absolute; top: 35%; left: 0; width: 100%; text-align: center;
+            color: #fbbf24; font-size: 2rem; font-weight: bold; 
+            text-shadow: 2px 2px 4px #000; animation: bounce 1s infinite;
+            pointer-events: none;
+        }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+    </style>
+</head>
+<body>
+
+<!-- UI Layer -->
+<div id="ui-layer">
+    <!-- Top HUD -->
+    <div class="p-4 flex justify-between items-start">
+        <div>
+            <h1 class="text-2xl hud-text">SCAVENGER RACERS</h1>
+            <div id="game-phase" class="text-xl text-yellow-400 font-bold hud-text">PHASE: LOBBY</div>
+            <div id="timer" class="text-4xl text-white font-mono hud-text">00:00</div>
+            <div id="crafting-warning">⚠️ HURRY UP! TIME IS RUNNING OUT! ⚠️</div>
+        </div>
+        <div class="text-right flex flex-col items-end">
+            <button id="restart-btn" class="mb-2 bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-3 rounded text-sm pointer-events-auto shadow-lg">
+                🔄 RESTART GAME
+            </button>
+            <div id="biome-indicator" class="text-lg text-cyan-300 hud-text">BIOME: ???</div>
+            <div id="player-count" class="text-sm text-gray-300 hud-text">Players: 1</div>
+        </div>
+    </div>
+
+    <!-- Center Message -->
+    <div id="center-msg" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+        <div id="notification" class="text-4xl text-white font-black hud-text animate-pulse">LOADING...</div>
+    </div>
+    
+    <!-- Farming Hint -->
+    <div id="farming-hint" class="hidden">PRESS SPACE TO PICK UP ITEMS! ⬇️</div>
+    
+    <!-- Zone Indicators -->
+    <div id="mud-warning" class="zone-warning">💩 MUD! SLOW DOWN! 💩</div>
+    <div id="updraft-indicator" class="zone-warning">🌪️ UPDRAFT! RISING! 🌪️</div>
+
+    <!-- Countdown Overlay -->
+    <div id="countdown-layer">
+        <div id="countdown-text">3</div>
+    </div>
+
+    <!-- Finish Overlay -->
+    <div id="finish-layer">
+        <div id="finish-text">FINISHED!</div>
+        <div class="text-2xl text-white">Ranking logic coming soon...</div>
+        <button onclick="document.getElementById('restart-btn').click()" class="mt-8 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full text-xl pointer-events-auto">
+            PLAY AGAIN
+        </button>
+    </div>
+
+    <!-- Boost Gauge -->
+    <div id="boost-container">
+        <div id="boost-bar"></div>
+        <div class="absolute inset-0 text-center text-xs text-black font-bold pt-0.5">BOOST (SHIFT)</div>
+    </div>
+
+    <!-- Bottom HUD (Inventory / Controls) -->
+    <div class="p-4 w-full flex flex-col items-center">
+        <!-- Racing Controls Hint -->
+        <div id="race-controls" class="hidden mb-4 text-white text-sm bg-black/50 p-2 rounded text-center">
+            <p>WASD to Drive • SHIFT for Boost</p>
+            <p class="text-xs text-gray-300">1:😀 2:😡 3:😎</p>
+        </div>
+        
+        <!-- Inventory Bar (Farming Phase) -->
+        <div id="inventory-bar" class="flex bg-black/50 p-2 rounded-lg gap-2 pointer-events-auto hidden">
+            <!-- Items injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- Crafting Screen Overlay -->
+<div id="crafting-screen" class="absolute inset-0 flex flex-col items-center justify-center text-white z-50">
+    
+    <!-- Active Crafting UI -->
+    <div id="crafting-content" class="flex w-full max-w-5xl gap-8 p-4">
+        <!-- Left: Inventory -->
+        <div class="flex-1 bg-gray-800 p-4 rounded-lg flex flex-col">
+            <h3 class="mb-4 text-lg font-bold text-gray-400">YOUR SCRAP (Click to Select)</h3>
+            <div id="crafting-inventory" class="flex flex-wrap gap-2 content-start overflow-y-auto h-64 p-2 bg-gray-700 rounded">
+                <!-- Inventory items replicated here -->
+            </div>
+        </div>
+
+        <!-- Center: Assembly -->
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <h2 class="text-3xl mb-6 font-bold text-yellow-400 text-center">ASSEMBLE<br>VEHICLE</h2>
+            <p class="text-xs text-gray-400 mb-4">Any item fits in any slot! Body determines shape.</p>
+            
+            <div class="flex gap-4 mb-8">
+                <div class="flex flex-col items-center gap-2">
+                    <span class="font-bold text-xs text-blue-300">CHASSIS (Body)</span>
+                    <div id="slot-body" class="slot" data-type="body">Empty</div>
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                    <span class="font-bold text-xs text-red-300">ENGINE</span>
+                    <div id="slot-engine" class="slot" data-type="engine">Empty</div>
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                    <span class="font-bold text-xs text-yellow-300">SPECIAL</span>
+                    <div id="slot-special" class="slot" data-type="special">Empty</div>
+                </div>
+            </div>
+
+            <button id="btn-ready" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transform transition hover:scale-105 w-full">
+                DEPLOY VEHICLE
+            </button>
+        </div>
+
+        <!-- Right: Stats -->
+        <div class="w-72 bg-gray-900 p-6 rounded-lg flex flex-col justify-center border border-gray-700">
+            <h3 class="mb-6 text-xl font-bold text-white border-b border-gray-700 pb-2 text-center">PREDICTED STATS</h3>
+            
+            <div class="stat-row">
+                <span class="stat-label">SPEED</span>
+                <div class="stat-track"><div id="stat-speed" class="stat-fill" style="width: 10%"></div></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">ACCEL</span>
+                <div class="stat-track"><div id="stat-accel" class="stat-fill" style="width: 10%"></div></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">TURN</span>
+                <div class="stat-track"><div id="stat-turn" class="stat-fill" style="width: 30%"></div></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">BOOST</span>
+                <div class="stat-track"><div id="stat-boost" class="stat-fill" style="width: 0%"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waiting State UI -->
+    <div id="crafting-waiting" class="hidden flex-col items-center text-center animate-pulse">
+        <h2 class='text-5xl text-green-400 mb-6 font-bold'>VEHICLE LOCKED IN</h2>
+        <p class="text-xl text-gray-300 mb-2">WAITING FOR OTHER PLAYERS...</p>
+        <div class="text-2xl text-white">RACE STARTS IN: <span id="crafting-timer-display" class="font-mono text-yellow-400 text-4xl">--</span></div>
+    </div>
+</div>
+
+<script type="module">
+    // --- IMPORTS & CONFIG ---
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    // --- GAME CONSTANTS ---
+    const BIOMES = ['FOREST', 'OCEAN', 'SKY'];
+    const TRACK_WIDTH = 40; 
+    const TRACK_LENGTH = 1200; 
+
+    // Enhanced Item Types for visuals
+    const ITEM_TYPES = [
+        // --- BODY (Weight: 1-20, Grip: 0.1-1.0) ---
+        { name: 'Cardboard Box', type: 'body', weight: 2, grip: 0.3, color: 0xD2B48C, shape: 'cardboard', icon: '📦', rotBody: [0,0,0], rotSpecial: [0,0,0] },
+        { name: 'Bamboo Raft', type: 'body', weight: 4, grip: 0.4, color: 0x556B2F, shape: 'bamboo', icon: '🎍', rotBody: [0,Math.PI/2,0], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'Log', type: 'body', weight: 10, grip: 0.7, color: 0x8B4513, shape: 'log', icon: '🪵', rotBody: [0,Math.PI/2,0], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'Red Sofa', type: 'body', weight: 12, grip: 0.8, color: 0xAA0000, shape: 'sofa', icon: '🛋️', rotBody: [0,Math.PI,0], rotSpecial: [0,0,0] },
+        { name: 'Shopping Cart', type: 'body', weight: 5, grip: 0.5, color: 0xCCCCCC, shape: 'cart', icon: '🛒', rotBody: [0,Math.PI,0], rotSpecial: [0,Math.PI/2,0] }, // Handle back
+        { name: 'Microwave', type: 'body', weight: 15, grip: 0.9, color: 0xDDDDDD, shape: 'microwave', icon: '🧊', rotBody: [0,Math.PI,0], rotSpecial: [0,0,0] },
+        { name: 'Bathtub', type: 'body', weight: 14, grip: 0.7, color: 0xFFFFFF, shape: 'cup', icon: '🛁', rotBody: [0,0,0], rotSpecial: [0,0,0] },
+        { name: 'Backpack', type: 'body', weight: 20, grip: 1.0, color: 0x333333, shape: 'backpack', icon: '🎒', rotBody: [0,Math.PI,0], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'Laptop', type: 'body', weight: 8, grip: 0.1, color: 0xC0C0C0, shape: 'laptop', icon: '💻', rotBody: [0,Math.PI,0], rotSpecial: [0,0,0] },
+        
+        // --- ENGINE (Power: 5-40) ---
+        { name: 'Shovel', type: 'engine', power: 5, color: 0x8B4513, shape: 'spoon', icon: '🥄', rotBody: [0,0,Math.PI/2], rotSpecial: [0,0,0] },
+        { name: 'Flower', type: 'engine', power: 10, color: 0xFFD700, shape: 'flower', icon: '🌻', rotBody: [0,0,0], rotSpecial: [0,0,0] },
+        { name: 'Big Gear', type: 'engine', power: 8, color: 0x555555, shape: 'gear', icon: '⚙️', rotBody: [0,Math.PI/2,0], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'Propeller', type: 'engine', power: 15, color: 0xFF0000, shape: 'propeller', icon: '🚁', rotBody: [0,0,0], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'V8 Engine', type: 'engine', power: 25, color: 0x888888, shape: 'engine', icon: '🏎️', rotBody: [0,Math.PI/2,0], rotSpecial: [0,Math.PI,0] },
+        { name: 'Kettle', type: 'engine', power: 40, color: 0xC0C0C0, shape: 'kettle', icon: '🫖', rotBody: [0,-Math.PI/2,0], rotSpecial: [0,Math.PI/2,0] },
+        { name: 'Cup Noodle', type: 'engine', power: 35, color: 0xFFD700, shape: 'noodle', icon: '🍜', rotBody: [0,0,0], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'Rocket', type: 'engine', power: 30, color: 0xFF0000, shape: 'rocket', icon: '🚀', rotBody: [0,0,Math.PI/2], rotSpecial: [0,0,0] }, 
+
+        // --- SPECIAL (Boost: 10-150) ---
+        { name: 'Toilet Paper', type: 'special', boost: 20, color: 0xFFFFFF, shape: 'roll', icon: '🧻', rotBody: [0,0,Math.PI/2], rotSpecial: [0,Math.PI/2,0] },
+        { name: 'Pizza', type: 'special', boost: 10, color: 0xFFA500, shape: 'pizza', icon: '🍕', rotBody: [0,0,0], rotSpecial: [Math.PI/2,0,0] },
+        { name: 'Rubber Duck', type: 'special', boost: 50, color: 0xFFFF00, shape: 'duck', icon: '🐤', rotBody: [0,-Math.PI/2,0], rotSpecial: [0,Math.PI/2,0] },
+        { name: 'Balloon Bunch', type: 'special', boost: 60, color: 0xFF69B4, shape: 'balloons', icon: '🎈', rotBody: [0,0,0], rotSpecial: [0,0,0] },
+        { name: 'Soda Bottle', type: 'special', boost: 100, color: 0xFF0000, shape: 'bottle', icon: '🥤', rotBody: [0,0,Math.PI/2], rotSpecial: [0,0,Math.PI/2] },
+        { name: 'Racing Flag', type: 'special', boost: 30, color: 0xFFFFFF, shape: 'flag', icon: '🏁', rotBody: [0,0,0], rotSpecial: [0,Math.PI/4,0] },
+        { name: 'Boombox', type: 'special', boost: 40, color: 0x333333, shape: 'boombox', icon: '📻', rotBody: [0,0,0], rotSpecial: [0,Math.PI/2,0] },
+        { name: 'Cactus', type: 'special', boost: 25, color: 0x006400, shape: 'cactus', icon: '🌵', rotBody: [0,0,0], rotSpecial: [0,0,0] }
+    ];
+
+    const PHASE_DURATIONS = {
+        FARMING: 60,
+        CRAFTING: 90, 
+        RACING: 999 
+    };
+
+    const EMOTES = { '1': '😀', '2': '😡', '3': '😎' };
+
+    // --- STATE ---
+    let myUser = null;
+    let myPlayerRef = null;
+    let lobbyRef = null;
+    let currentPhase = 'LOBBY';
+    let currentBiome = null; 
+    let currentMapType = null; // Track current map type
+    let lobbyStartTime = 0; 
+    let localInventory = [];
+    let localVehicle = { body: null, engine: null, special: null };
+    let otherPlayers = {}; 
+    let itemsMap = {}; 
+    let trackObstacles = []; 
+    let mudSegments = []; 
+    let updraftZones = []; 
+    let lastUpdate = 0;
+    
+    // Three.js Globals
+    let scene, camera, renderer;
+    let playerMesh;
+    let moveSpeed = 0.5;
+    
+    // Physics State
+    let vehicleSpeed = 0;
+    let verticalVelocity = 0; 
+    let boostCharge = 0;
+    let maxBoost = 0;
+    let isRaceInputLocked = false;
+    let isFinished = false;
+
+    let keys = {};
+    let isReadyToRace = false;
+    let isDeployed = false;
+    let speedLines = null;
+    let targetIndicator = null; 
+
+    // --- HELPER: Object Generators ---
+    const createObjectMesh = (itemType) => {
+        const group = new THREE.Group();
+        if (!itemType) return group;
+
+        const box = (w, h, d, c, x=0, y=0, z=0, rotX=0, rotZ=0) => {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({color: c}));
+            m.position.set(x, y, z);
+            if(rotX) m.rotation.x = rotX;
+            if(rotZ) m.rotation.z = rotZ;
+            return m;
+        };
+        const cyl = (rt, rb, h, c, x=0, y=0, z=0, rotX=0, rotZ=0) => {
+            const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 16), new THREE.MeshStandardMaterial({color: c}));
+            m.position.set(x, y, z); m.rotation.x = rotX; m.rotation.z = rotZ; return m;
+        };
+        const sphere = (r, c, x=0, y=0, z=0, sx=1, sy=1, sz=1) => {
+            const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 16), new THREE.MeshStandardMaterial({color: c}));
+            m.position.set(x, y, z); m.scale.set(sx, sy, sz); return m;
+        };
+
+        switch(itemType.shape) {
+            case 'cardboard': 
+                group.add(box(1, 0.7, 0.7, itemType.color)); 
+                group.add(box(1.01, 0.1, 0.71, 0x8B4513)); 
+                // FIXED: Flaps attached to edges accurately
+                group.add(box(1, 0.05, 0.35, 0x8B4513, 0, 0.35, -0.525, -Math.PI/3)); 
+                group.add(box(1, 0.05, 0.35, 0x8B4513, 0, 0.35, 0.525, Math.PI/3));
+                break;
+            case 'log': 
+                group.add(cyl(0.3, 0.3, 1.5, itemType.color, 0,0,0, 0, Math.PI/2)); 
+                group.add(cyl(0.05, 0.05, 0.4, itemType.color, 0.2, 0.2, 0, 0, Math.PI/4));
+                group.add(cyl(0.05, 0.05, 0.3, itemType.color, -0.3, -0.1, 0.1, Math.PI/4, 0));
+                break;
+            case 'bamboo': // Bamboo Raft
+                group.add(cyl(0.1, 0.1, 1.5, 0x556B2F, 0.2, 0, 0, 0, Math.PI/2));
+                group.add(cyl(0.1, 0.1, 1.5, 0x556B2F, 0, 0, 0, 0, Math.PI/2));
+                group.add(cyl(0.1, 0.1, 1.5, 0x556B2F, -0.2, 0, 0, 0, Math.PI/2));
+                // Rope
+                group.add(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 4, 12), new THREE.MeshStandardMaterial({color: 0x8B4513})).rotateY(Math.PI/2).translateX(-0.5));
+                group.add(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 4, 12), new THREE.MeshStandardMaterial({color: 0x8B4513})).rotateY(Math.PI/2).translateX(0.5));
+                break;
+            case 'sofa':
+                group.add(box(1.2, 0.4, 0.8, itemType.color, 0, 0.2, 0)); 
+                group.add(box(1.2, 0.6, 0.2, itemType.color, 0, 0.5, -0.3)); 
+                group.add(box(0.2, 0.4, 0.8, itemType.color, -0.5, 0.3, 0)); 
+                group.add(box(0.2, 0.4, 0.8, itemType.color, 0.5, 0.3, 0)); 
+                break;
+            case 'cart': // Shopping Cart - FIXED
+                // Basket
+                group.add(box(1, 0.05, 0.7, 0xCCCCCC, 0, 0.05, 0)); 
+                group.add(box(0.05, 0.6, 0.7, 0xCCCCCC, -0.5, 0.3, 0)); 
+                group.add(box(0.05, 0.4, 0.7, 0xCCCCCC, 0.5, 0.25, 0)); 
+                group.add(box(1, 0.05, 0.05, 0xCCCCCC, 0, 0.55, -0.35)); 
+                group.add(box(1, 0.05, 0.05, 0xCCCCCC, 0, 0.55, 0.35)); 
+                // Vertical wires
+                for(let i=0; i<=5; i++) {
+                    let z = -0.35 + i*0.14;
+                    group.add(cyl(0.01, 0.01, 0.5, 0xCCCCCC, -0.5, 0.3, z)); 
+                    group.add(cyl(0.01, 0.01, 0.4, 0xCCCCCC, 0.5, 0.25, z)); 
+                }
+                // Handle - Connected properly
+                group.add(box(0.1, 0.05, 0.05, 0xCCCCCC, -0.55, 0.6, -0.35)); // Top link L
+                group.add(box(0.1, 0.05, 0.05, 0xCCCCCC, -0.55, 0.6, 0.35)); // Top link R
+                // Vertical support for handle - FIXED POSITION
+                group.add(box(0.05, 0.6, 0.05, 0xCCCCCC, -0.6, 0.3, -0.35)); 
+                group.add(box(0.05, 0.6, 0.05, 0xCCCCCC, -0.6, 0.3, 0.35)); 
+                // Red Handle bar
+                group.add(cyl(0.05, 0.05, 0.8, 0xFF0000, -0.65, 0.6, 0, Math.PI/2, 0)); 
+                break;
+            case 'microwave': 
+                group.add(box(1, 0.7, 0.7, itemType.color));
+                group.add(box(0.6, 0.4, 0.02, 0x222222, -0.1, 0, 0.36)); 
+                group.add(box(0.2, 0.6, 0.02, 0xDDDDDD, 0.35, 0, 0.36)); 
+                group.add(cyl(0.05, 0.05, 0.1, 0x333333, 0.35, 0.1, 0.4, Math.PI/2, 0)); 
+                group.add(box(0.05, 0.4, 0.05, 0x999999, -0.45, 0, 0.4)); 
+                break;
+            case 'safe': 
+                group.add(box(0.8, 0.8, 0.8, 0x333333));
+                group.add(cyl(0.15, 0.15, 0.1, 0x999999, 0, 0, 0.41, Math.PI/2, 0)); 
+                group.add(box(0.05, 0.2, 0.05, 0x999999, 0.35, 0.2, 0.41)); 
+                group.add(box(0.05, 0.2, 0.05, 0x999999, 0.35, -0.2, 0.41)); 
+                break;
+            case 'ice':
+                const iceMat = new THREE.MeshStandardMaterial({color: 0xAADDFF, transparent: true, opacity: 0.5});
+                group.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), iceMat));
+                group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({color: 0xFFFFFF, opacity: 0.8, transparent:true})));
+                break;
+            case 'cup': 
+                group.add(box(1.2, 0.1, 0.8, itemType.color, 0, -0.25, 0)); 
+                group.add(box(1.2, 0.6, 0.1, itemType.color, 0, 0, -0.35)); 
+                group.add(box(1.2, 0.6, 0.1, itemType.color, 0, 0, 0.35)); 
+                group.add(box(0.1, 0.6, 0.8, itemType.color, -0.55, 0, 0)); 
+                group.add(box(0.1, 0.6, 0.8, itemType.color, 0.55, 0, 0)); 
+                group.add(box(1.0, 0.4, 0.6, 0x88ccff, 0, -0.1, 0)); 
+                group.add(cyl(0.05, 0.05, 0.4, 0x999999, -0.55, 0.4, 0));
+                group.add(cyl(0.04, 0.04, 0.2, 0x999999, -0.45, 0.55, 0, 0, Math.PI/2));
+                break;
+
+            case 'engine': // V8 Engine - Improved
+                group.add(box(0.6, 0.6, 0.8, 0x777777)); // Engine Block
+                // V8 Cylinders
+                for(let i=0; i<4; i++) {
+                    let z = -0.3 + i*0.2;
+                    group.add(cyl(0.08, 0.08, 0.3, 0x444444, 0.25, 0.4, z, 0, -Math.PI/6));
+                    group.add(cyl(0.08, 0.08, 0.3, 0x444444, -0.25, 0.4, z, 0, Math.PI/6));
+                }
+                // Air Scoop (Intake)
+                group.add(box(0.3, 0.15, 0.7, 0x111111, 0, 0.5, 0));
+                group.add(box(0.32, 0.05, 0.72, 0xFF0000, 0, 0.55, 0)); // Red top
+                // Fan Belt
+                group.add(cyl(0.1, 0.1, 0.1, 0x000000, 0, 0, 0.45, Math.PI/2));
+                break;
+            case 'propeller': // Propeller
+                group.add(cyl(0.1, 0.2, 0.4, 0x888888, 0, 0, 0.1, Math.PI/2)); // Spinner
+                // 3 Blades
+                for(let i=0; i<3; i++) {
+                     const a = (i/3)*Math.PI*2;
+                     const b = box(0.15, 1.2, 0.05, 0x333333, 0, 0.6, 0); // Black blades
+                     b.rotation.z = a;
+                     b.position.set(Math.cos(a+Math.PI/2)*0.6, Math.sin(a+Math.PI/2)*0.6, 0);
+                     group.add(b);
+                }
+                break;
+            case 'turbine': 
+                group.add(cyl(0.3, 0.4, 1.2, 0x999999, 0,0,0, Math.PI/2));
+                group.add(cyl(0.1, 0.0, 0.5, 0xFF4400, 0,0,0.6, Math.PI/2)); 
+                break;
+            case 'hamster': 
+                const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 16), new THREE.MeshStandardMaterial({color: 0xDEB887}));
+                group.add(wheel);
+                break;
+            case 'rocket':
+                group.add(cyl(0.2, 0.2, 1.0, 0xFFFFFF, 0,0,0, Math.PI/2)); 
+                group.add(cyl(0.0, 0.2, 0.4, 0xFF0000, 0,0,0.7, Math.PI/2)); 
+                group.add(box(0.1, 0.6, 0.1, 0xFF0000, 0,0,-0.4)); 
+                group.add(box(0.1, 0.1, 0.6, 0xFF0000, 0,0,-0.4)); 
+                break;
+            case 'nuclear':
+                const nucBox = box(0.5, 0.5, 0.5, 0x00FF00);
+                nucBox.material.emissive = new THREE.Color(0x00AA00);
+                group.add(nucBox);
+                break;
+            case 'fan': 
+                group.add(cyl(0.2, 0.2, 0.1, 0x333333, 0,0,0, Math.PI/2)); 
+                group.add(box(0.1, 1.0, 0.05, itemType.color, 0,0,0, 0, 0)); 
+                group.add(box(0.1, 1.0, 0.05, itemType.color, 0,0,0, 0, Math.PI/2)); 
+                break;
+            case 'gear': // Big Gear - Teeth
+                group.add(cyl(0.4, 0.4, 0.1, 0x555555, 0,0,0, Math.PI/2));
+                for(let i=0; i<8; i++) {
+                     const a = (i/8)*Math.PI*2;
+                     const tx = Math.cos(a)*0.45;
+                     const ty = Math.sin(a)*0.45;
+                     const tooth = box(0.15, 0.15, 0.1, 0x555555, tx, ty, 0);
+                     tooth.rotation.z = a;
+                     group.add(tooth);
+                }
+                break;
+
+            case 'bottle': // Soda
+                group.add(cyl(0.15, 0.15, 0.6, 0xFF0000, 0, 0, 0)); // Red Body
+                group.add(cyl(0.16, 0.16, 0.2, 0xFFFFFF, 0, 0, 0)); // White Label
+                group.add(cyl(0.05, 0.15, 0.2, 0xFF0000, 0, 0.4, 0)); // Neck
+                group.add(cyl(0.06, 0.06, 0.05, 0xFFFFFF, 0, 0.5, 0)); // Cap
+                break;
+            case 'duck': 
+                group.add(sphere(0.3, 0xFFFF00, 0, 0, 0, 1, 0.7, 1.3));
+                group.add(sphere(0.2, 0xFFFF00, 0, 0.3, 0.3));
+                group.add(cyl(0.01, 0.08, 0.15, 0xFFA500, 0, 0.3, 0.55, Math.PI/2, 0));
+                group.add(sphere(0.03, 0x000000, 0.1, 0.35, 0.45));
+                group.add(sphere(0.03, 0x000000, -0.1, 0.35, 0.45));
+                break;
+            case 'roll': // TP
+                group.add(cyl(0.25, 0.25, 0.4, 0xFFFFFF, 0,0,0, 0, Math.PI/2));
+                const sheet = box(0.35, 0.02, 0.6, 0xFFFFFF, 0, -0.25, 0.3);
+                sheet.rotation.x = Math.PI/4;
+                group.add(sheet);
+                break;
+            case 'pizza': // Pizza - Whole
+                group.add(cyl(0.5, 0.5, 0.05, 0xFFA500)); 
+                group.add(cyl(0.45, 0.45, 0.06, 0xFFFF00, 0, 0, 0)); 
+                group.add(cyl(0.08, 0.08, 0.07, 0xAA0000, 0.2, 0, 0.2)); 
+                group.add(cyl(0.08, 0.08, 0.07, 0xAA0000, -0.2, 0, -0.1));
+                group.add(cyl(0.08, 0.08, 0.07, 0xAA0000, 0.1, 0, -0.25));
+                break;
+            case 'cactus':
+                group.add(cyl(0.1, 0.1, 0.8, 0x006400, 0, 0.4, 0)); 
+                group.add(sphere(0.1, 0x006400, 0, 0.8, 0)); 
+                group.add(cyl(0.08, 0.08, 0.3, 0x006400, 0.2, 0.5, 0, 0, -Math.PI/4)); 
+                group.add(sphere(0.08, 0x006400, 0.32, 0.62, 0)); 
+                break;
+            case 'flag': // Racing Flag
+                group.add(cyl(0.02, 0.02, 1.2, 0xCCCCCC, 0, 0.6, 0)); 
+                const flagGroup = new THREE.Group();
+                flagGroup.position.set(0.3, 1.0, 0);
+                flagGroup.add(box(0.6, 0.4, 0.02, 0xFFFFFF));
+                flagGroup.add(box(0.3, 0.2, 0.03, 0x000000, -0.15, 0.1, 0));
+                flagGroup.add(box(0.3, 0.2, 0.03, 0x000000, 0.15, -0.1, 0));
+                group.add(flagGroup);
+                break;
+            case 'boombox':
+                group.add(box(0.9, 0.5, 0.3, 0x222222)); // Body
+                group.add(cyl(0.2, 0.2, 0.05, 0x555555, -0.25, 0, 0.16, Math.PI/2)); // Speaker
+                group.add(cyl(0.2, 0.2, 0.05, 0x555555, 0.25, 0, 0.16, Math.PI/2)); // Speaker
+                group.add(box(0.6, 0.05, 0.05, 0x000000, 0, 0.3, 0)); // Handle bar
+                group.add(box(0.05, 0.1, 0.05, 0x000000, -0.3, 0.25, 0)); // Handle leg
+                group.add(box(0.05, 0.1, 0.05, 0x000000, 0.3, 0.25, 0)); // Handle leg
+                break;
+            case 'balloons':
+                group.add(sphere(0.2, 0xFF0000, 0, 0.6, 0));
+                group.add(sphere(0.2, 0x00FF00, 0.15, 0.7, 0.1));
+                group.add(sphere(0.2, 0x0000FF, -0.15, 0.7, -0.1));
+                group.add(cyl(0.01, 0.01, 0.6, 0xFFFFFF, 0, 0.3, 0)); 
+                break;
+            // NEW ITEMS
+            case 'kettle': // Kettle - Fixed handle & Spout - FULL TORUS SINK
+                group.add(sphere(0.4, 0xC0C0C0, 0, 0, 0, 1, 0.8, 1));
+                group.add(cyl(0.08, 0.1, 0.4, 0xC0C0C0, 0, 0.1, 0.35, Math.PI/4, 0));
+                // Handle attached deeper
+                const kHandle = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.04, 8, 16, Math.PI*2), new THREE.MeshStandardMaterial({color: 0x111111}));
+                kHandle.rotation.z = -Math.PI/2;
+                kHandle.position.set(0, 0.1, 0); // Sunk down
+                group.add(kHandle);
+                break;
+            case 'spoon': // Shovel 
+                group.add(cyl(0.03, 0.03, 1.2, 0x8B4513, 0, 0, 0, Math.PI/2)); // Handle
+                const shovelHead = box(0.4, 0.5, 0.05, 0x555555, 0, 0, 0.75); // Blade
+                shovelHead.rotation.x = 0.2; 
+                group.add(shovelHead);
+                // D-Handle Grip
+                group.add(new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 4, 8), new THREE.MeshStandardMaterial({color: 0x333333})).translateX(0).translateZ(-0.6).rotateX(Math.PI/2));
+                break;
+            case 'noodle': // Cup Noodle
+                group.add(cyl(0.35, 0.25, 0.7, 0xFFFFFF)); 
+                group.add(cyl(0.36, 0.36, 0.05, 0xFFD700, 0, 0.35, 0)); 
+                break;
+            case 'flower': // Sunflower
+                group.add(cyl(0.05, 0.05, 1.0, 0x228B22)); 
+                group.add(cyl(0.3, 0.3, 0.1, 0x654321, 0, 0.5, 0.1, Math.PI/2)); 
+                for(let i=0; i<8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const px = Math.cos(angle) * 0.4;
+                    const py = Math.sin(angle) * 0.4;
+                    group.add(sphere(0.1, 0xFFFF00, px, 0.5 + py, 0.1, 1, 1, 0.2));
+                }
+                break;
+            case 'backpack': // Backpack - Improved
+                group.add(box(0.8, 1.0, 0.5, 0x333333)); 
+                group.add(box(0.6, 0.5, 0.3, 0x555555, 0, -0.1, 0.4)); 
+                group.add(new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})).translateY(0.55)); // Handle
+                // Straps
+                group.add(box(0.1, 0.8, 0.05, 0x111111, -0.2, 0, -0.26));
+                group.add(box(0.1, 0.8, 0.05, 0x111111, 0.2, 0, -0.26));
+                break;
+            case 'laptop': // Laptop - Hinge Fix
+                group.add(box(1.0, 0.05, 0.7, 0x333333)); // Base
+                const screenGroup = new THREE.Group();
+                const screenFrame = box(1.0, 0.7, 0.05, 0x111111, 0, 0.35, 0); 
+                const screenPanel = box(0.9, 0.6, 0.01, 0x88CCFF, 0, 0.35, 0.03);
+                screenGroup.add(screenFrame, screenPanel);
+                screenGroup.position.set(0, 0.025, -0.35); // Hinge at back edge
+                screenGroup.rotation.x = Math.PI/6; // Tilt back
+                group.add(screenGroup);
+                break;
+                
+            default: 
+                group.add(box(0.5, 0.5, 0.5, itemType.color));
+        }
+        return group;
+    };
+
+    // --- AUTH & INIT ---
+    const initGame = async () => {
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+        await initAuth();
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                myUser = user;
+                setupLobby();
+                
+                // Add restart handler
+                document.getElementById('restart-btn').onclick = async () => {
+                     await initializeLobby();
+                     window.location.reload();
+                };
+            }
+        });
+    };
+
+    // --- FIRESTORE LOGIC ---
+    const setupLobby = async () => {
+        initThreeJS();
+
+        const lobbyId = 'global-race-v1';
+        lobbyRef = doc(db, 'artifacts', appId, 'public', 'data', 'lobbies', lobbyId);
+        myPlayerRef = doc(lobbyRef, 'players', myUser.uid);
+
+        onSnapshot(lobbyRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                const now = Date.now();
+                // Check if lobby is too old or if user joins late to an active game
+                // If it's the very first load (lobbyStartTime is 0) and game is advanced, reset local state or handle appropriately.
+                // Here, we force reset if > 3600s old to keep the demo alive.
+                if (now - data.startTime > 3600 * 1000) {
+                     initializeLobby(); 
+                } else {
+                    handleLobbyUpdate(data);
+                }
+            } else {
+                initializeLobby();
+            }
+        }, (err) => console.error("Lobby sync error:", err));
+
+        onSnapshot(collection(lobbyRef, 'players'), (snap) => {
+            document.getElementById('player-count').innerText = `Players: ${snap.size}`;
+            snap.docChanges().forEach(change => {
+                const pData = change.doc.data();
+                const pId = change.doc.id;
+                if (pId === myUser.uid) return;
+
+                if (change.type === 'added') {
+                    spawnOtherPlayer(pId, pData);
+                } else if (change.type === 'modified') {
+                    updateOtherPlayer(pId, pData);
+                } else if (change.type === 'removed') {
+                    removeOtherPlayer(pId);
+                }
+            });
+        }, (err) => console.error("Player sync error:", err));
+
+        const startPos = { x: (Math.random() - 0.5) * 50, y: 1, z: (Math.random() - 0.5) * 50 };
+        await setDoc(myPlayerRef, {
+            id: myUser.uid,
+            x: startPos.x, y: startPos.y, z: startPos.z,
+            rotation: 0,
+            inventory: [],
+            vehicle: null,
+            emote: null,
+            finished: false,
+            lastActive: Date.now()
+        });
+
+        spawnLocalPlayer(startPos);
+        animate();
+    };
+
+    const initializeLobby = async () => {
+        const randomBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
+        const startTime = Date.now();
+        await setDoc(lobbyRef, {
+            gameState: 'FARMING',
+            biome: randomBiome,
+            startTime: startTime,
+            takenItems: {} 
+        });
+    };
+
+    const handleLobbyUpdate = (data) => {
+        lobbyStartTime = data.startTime;
+
+        // Calculate phase based on server time
+        const now = Date.now();
+        const elapsed = (now - lobbyStartTime) / 1000;
+        let serverPhase = 'FARMING';
+        if (elapsed > PHASE_DURATIONS.FARMING + PHASE_DURATIONS.CRAFTING) serverPhase = 'RACING';
+        else if (elapsed > PHASE_DURATIONS.FARMING) serverPhase = 'CRAFTING';
+
+        if (currentBiome !== data.biome || currentMapType !== serverPhase) {
+            currentBiome = data.biome;
+            currentMapType = serverPhase;
+            document.getElementById('biome-indicator').innerText = `BIOME: ${data.biome}`;
+            
+            // Pass the correct phase!
+            generateEnvironment(currentBiome, serverPhase); 
+            
+            if(serverPhase === 'FARMING') generateItems(100);
+        }
+        
+        if (data.takenItems) {
+            for (const [itemId, userId] of Object.entries(data.takenItems)) {
+                if (itemsMap[itemId] && !itemsMap[itemId].taken) {
+                    itemsMap[itemId].taken = true;
+                    itemsMap[itemId].mesh.visible = false;
+                }
+            }
+        }
+    };
+
+    const updateGameLogic = () => {
+        if (!lobbyStartTime) return;
+
+        const now = Date.now();
+        const elapsed = (now - lobbyStartTime) / 1000;
+        
+        let newPhase = 'FARMING';
+        let timeLeft = 0;
+
+        if (elapsed < PHASE_DURATIONS.FARMING) {
+            newPhase = 'FARMING';
+            timeLeft = PHASE_DURATIONS.FARMING - elapsed;
+        } else if (elapsed < PHASE_DURATIONS.FARMING + PHASE_DURATIONS.CRAFTING) {
+            newPhase = 'CRAFTING';
+            timeLeft = (PHASE_DURATIONS.FARMING + PHASE_DURATIONS.CRAFTING) - elapsed;
+        } else {
+            newPhase = 'RACING';
+            timeLeft = 999;
+        }
+
+        if (newPhase === 'CRAFTING' && timeLeft < 10 && !isDeployed) {
+             document.getElementById('crafting-warning').style.display = 'block';
+        } else {
+             document.getElementById('crafting-warning').style.display = 'none';
+        }
+
+        if (currentPhase === 'CRAFTING' && newPhase === 'RACING') {
+             if (!isDeployed) {
+                 deployVehicle(true); 
+             }
+        }
+
+        if (currentPhase !== newPhase) {
+            currentPhase = newPhase;
+            onPhaseChange(newPhase);
+        }
+
+        document.getElementById('game-phase').innerText = `PHASE: ${newPhase}`;
+        const timeDisplay = timeLeft > 100 ? "GO!" : Math.ceil(timeLeft);
+        if(!isFinished) document.getElementById('timer').innerText = timeDisplay;
+        
+        const waitingTimerEl = document.getElementById('crafting-timer-display');
+        if (waitingTimerEl) waitingTimerEl.innerText = timeDisplay;
+    };
+
+    // --- THREE.JS ENGINE ---
+    const initThreeJS = () => {
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.zIndex = '-1';
+        document.body.appendChild(canvas);
+
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        
+        // Lights
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        scene.add(hemiLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Speed Lines
+        const particlesGeo = new THREE.BufferGeometry();
+        const particlesCount = 200;
+        const posArray = new Float32Array(particlesCount * 3);
+        for(let i=0; i<particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 100;
+        }
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMat = new THREE.PointsMaterial({
+            size: 0.2, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending
+        });
+        speedLines = new THREE.Points(particlesGeo, particlesMat);
+        scene.add(speedLines);
+
+        // Target Indicator (Arrow) - Smaller
+        const arrowGeo = new THREE.ConeGeometry(0.25, 0.5, 8);
+        const arrowMat = new THREE.MeshBasicMaterial({color: 0xFFFF00});
+        targetIndicator = new THREE.Mesh(arrowGeo, arrowMat);
+        targetIndicator.rotation.z = Math.PI; // Point down
+        targetIndicator.visible = false;
+        scene.add(targetIndicator);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('keydown', handleGlobalInput);
+    };
+
+    const spawnLocalPlayer = (startPos) => {
+        const geometry = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0055 });
+        playerMesh = new THREE.Mesh(geometry, material);
+        playerMesh.position.set(startPos.x, startPos.y, startPos.z);
+        playerMesh.castShadow = true;
+        
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshStandardMaterial({color: 0x333333}));
+        nose.position.z = 0.5;
+        nose.position.y = 0.3;
+        playerMesh.add(nose);
+
+        scene.add(playerMesh);
+    }
+
+    // Grid Texture Helper
+    const createGridTexture = (color1, color2) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color1; ctx.fillRect(0,0,64,64);
+        ctx.fillStyle = color2; ctx.fillRect(0,0,32,32); ctx.fillRect(32,32,32,32);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(50, 200); 
+        return tex;
+    };
+
+    const generateEnvironment = (biome, phase) => {
+        if (!scene) return;
+        
+        trackObstacles = []; 
+        mudSegments = []; 
+        updraftZones = []; 
+
+        for (let i = scene.children.length - 1; i >= 0; i--) {
+            if (scene.children[i].userData.isEnv) {
+                scene.remove(scene.children[i]);
+            }
+        }
+
+        let floorTex;
+        if (biome === 'OCEAN') floorTex = createGridTexture('#1E90FF', '#1c86ee');
+        else if (biome === 'SKY') floorTex = createGridTexture('#F0F8FF', '#e6f2ff');
+        else floorTex = createGridTexture('#228B22', '#1f7e1f');
+
+        // Floor
+        let groundW = 200, groundH = 200;
+        if (phase === 'RACING') { groundW = TRACK_WIDTH + 20; groundH = TRACK_LENGTH; }
+        
+        const planeGeo = new THREE.PlaneGeometry(groundW, groundH); 
+        const planeMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.8 });
+        const ground = new THREE.Mesh(planeGeo, planeMat);
+        ground.rotation.x = -Math.PI / 2;
+        if (phase === 'RACING') ground.position.z = -TRACK_LENGTH / 2 + 50; 
+        ground.receiveShadow = true;
+        ground.userData.isEnv = true;
+        scene.add(ground);
+
+        // --- RACING ONLY ELEMENTS ---
+        if (phase === 'RACING') {
+            // Walls
+            const wallGeo = new THREE.BoxGeometry(2, 4, TRACK_LENGTH);
+            const wallMat = new THREE.MeshStandardMaterial({ 
+                color: biome === 'SKY' ? 0xffffff : 0x444444,
+                emissive: biome === 'SKY' ? 0x444444 : 0x000000 
+            });
+            
+            const leftWall = new THREE.Mesh(wallGeo, wallMat);
+            leftWall.position.set(-(TRACK_WIDTH/2 + 2), 2, -TRACK_LENGTH/2 + 50);
+            leftWall.userData.isEnv = true;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(wallGeo, wallMat);
+            rightWall.position.set((TRACK_WIDTH/2 + 2), 2, -TRACK_LENGTH/2 + 50);
+            rightWall.userData.isEnv = true;
+            scene.add(rightWall);
+
+            // Obstacles
+            const obstacleCount = 30; 
+            const obsGeo = new THREE.DodecahedronGeometry(1.5);
+            const obsMat = new THREE.MeshStandardMaterial({ color: 0x555555 }); 
+            
+            for (let i = 0; i < obstacleCount; i++) {
+                const obs = new THREE.Mesh(obsGeo, obsMat);
+                const x = (Math.random() - 0.5) * (TRACK_WIDTH - 4); 
+                const z = -Math.random() * (TRACK_LENGTH - 200) - 100; 
+                obs.position.set(x, 1.5, z);
+                obs.scale.set(Math.random()+1, Math.random()+1, Math.random()+1);
+                obs.userData.isEnv = true;
+                obs.userData.isObstacle = true;
+                scene.add(obs);
+                trackObstacles.push(obs); 
+            }
+
+            // MUD
+            if (biome === 'FOREST') {
+                const mudCount = 5;
+                const mudGeo = new THREE.PlaneGeometry(TRACK_WIDTH - 2, 30);
+                const mudMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1 });
+                for(let i=0; i<mudCount; i++) {
+                    const z = -Math.random() * (TRACK_LENGTH - 300) - 100;
+                    const mesh = new THREE.Mesh(mudGeo, mudMat);
+                    mesh.rotation.x = -Math.PI / 2;
+                    mesh.position.set(0, 0.05, z); 
+                    mesh.userData.isEnv = true;
+                    scene.add(mesh);
+                    mudSegments.push({ zMin: z - 15, zMax: z + 15, xMin: -(TRACK_WIDTH/2), xMax: (TRACK_WIDTH/2) });
+                }
+            }
+
+            // UPDRAFT
+            if (biome === 'SKY') {
+                const updraftCount = 8;
+                const updraftGeo = new THREE.CylinderGeometry(5, 5, 20, 16, 1, true);
+                const updraftMat = new THREE.MeshBasicMaterial({ color: 0x87CEEB, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+                for(let i=0; i<updraftCount; i++) {
+                    const z = -Math.random() * (TRACK_LENGTH - 300) - 100;
+                    const x = (Math.random() - 0.5) * (TRACK_WIDTH - 10);
+                    const mesh = new THREE.Mesh(updraftGeo, updraftMat);
+                    mesh.position.set(x, 10, z); 
+                    mesh.userData.isEnv = true;
+                    scene.add(mesh);
+                    updraftZones.push({ x: x, z: z, radius: 5, strength: 0.3, maxHeight: 30 });
+                }
+            }
+
+            // FINISH LINE
+            const finishArchGroup = new THREE.Group();
+            finishArchGroup.position.z = -1000;
+            finishArchGroup.userData.isEnv = true;
+            const pillarGeo = new THREE.BoxGeometry(2, 20, 2);
+            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const leftPillar = new THREE.Mesh(pillarGeo, pillarMat); leftPillar.position.set(-(TRACK_WIDTH/2 + 2), 10, 0);
+            const rightPillar = new THREE.Mesh(pillarGeo, pillarMat); rightPillar.position.set((TRACK_WIDTH/2 + 2), 10, 0);
+            const topGeo = new THREE.BoxGeometry(TRACK_WIDTH + 10, 4, 4);
+            const topMat = new THREE.MeshStandardMaterial({ color: 0x000000 }); 
+            const topBar = new THREE.Mesh(topGeo, topMat); topBar.position.set(0, 20, 0);
+            const textGeo = new THREE.PlaneGeometry(40, 8);
+            const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 64;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center'; ctx.fillText("FINISH", 128, 48);
+            const textTex = new THREE.CanvasTexture(canvas);
+            const textMat = new THREE.MeshBasicMaterial({ map: textTex, transparent: true, side: THREE.DoubleSide });
+            const textMesh = new THREE.Mesh(textGeo, textMat); textMesh.position.set(0, 20, 0);
+            finishArchGroup.add(leftPillar, rightPillar, topBar, textMesh);
+            scene.add(finishArchGroup);
+        }
+
+        // Decor (In both phases, but spread differently)
+        const decorCount = 200;
+        let decorGeo;
+        if (biome === 'FOREST') decorGeo = new THREE.ConeGeometry(2, 8, 8); 
+        else if (biome === 'OCEAN') decorGeo = new THREE.DodecahedronGeometry(3); 
+        else decorGeo = new THREE.BoxGeometry(5, 0.5, 5); 
+        const decorMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        
+        for(let i=0; i<decorCount; i++) {
+            const mesh = new THREE.Mesh(decorGeo, decorMat);
+            let x, z;
+            if (phase === 'RACING') {
+                const side = Math.random() > 0.5 ? 1 : -1;
+                const dist = TRACK_WIDTH/2 + 10 + Math.random() * 50;
+                x = side * dist;
+                z = (Math.random()) * -TRACK_LENGTH + 100;
+            } else {
+                // FARMING: Avoid center
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 100; // > 50 units away from center
+                x = Math.sin(angle) * dist;
+                z = Math.cos(angle) * dist;
+            }
+            
+            let y = 0;
+            if(biome === 'FOREST') { mesh.material.color.setHex(0x2E8B57); y = 4; } 
+            else if(biome === 'OCEAN') { mesh.material.color.setHex(0x708090); y = 1; } 
+            else if (biome === 'SKY') { mesh.material.color.setHex(0xffffff); y = Math.random() * 30 - 10; mesh.material.transparent = true; mesh.material.opacity = 0.8; }
+            mesh.position.set(x, y, z);
+            mesh.userData.isEnv = true;
+            
+            // Add collision to decor in FARMING
+            if(phase === 'FARMING') {
+                mesh.userData.isObstacle = true;
+                trackObstacles.push(mesh);
+            }
+            
+            scene.add(mesh);
+        }
+
+        if (biome === 'FOREST') scene.fog.color.setHex(0x87CEEB);
+        if (biome === 'OCEAN') scene.fog.color.setHex(0x87CEFA);
+        if (biome === 'SKY') scene.fog.color.setHex(0xB0E0E6);
+        scene.background = scene.fog.color;
+    };
+
+    const generateItems = (count) => {
+        if (!scene) return;
+        Object.values(itemsMap).forEach(i => scene.remove(i.mesh));
+        itemsMap = {};
+
+        const positions = [];
+        const minDistance = 8.0; // Increased spacing
+
+        for (let i = 0; i < count; i++) {
+            // Overlap check loop
+            let x, z;
+            let valid = false;
+            let attempts = 0;
+            while (!valid && attempts < 10) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 40; 
+                x = Math.sin(angle) * radius; 
+                z = Math.cos(angle) * radius;
+                
+                valid = true;
+                for(let p of positions) {
+                    const dist = Math.sqrt((p.x-x)**2 + (p.z-z)**2);
+                    if(dist < minDistance) {
+                        valid = false;
+                        break;
+                    }
+                }
+                attempts++;
+            }
+            if (!valid) continue; // Skip if no valid pos found
+            positions.push({x, z});
+            
+            const typeIndex = Math.floor(Math.abs(Math.sin(i * 12.3)) * ITEM_TYPES.length);
+            const itemType = ITEM_TYPES[typeIndex];
+
+            // Use Complex Mesh
+            const mesh = createObjectMesh(itemType);
+            mesh.position.set(x, 1, z);
+            mesh.userData = { id: i, type: itemType, yBase: 1, floatOffset: Math.random() * Math.PI };
+            
+            scene.add(mesh);
+            itemsMap[i] = { mesh, type: itemType, taken: false, id: i };
+        }
+    };
+
+    // --- GAME LOOP ---
+    const animate = () => {
+        requestAnimationFrame(animate);
+        const delta = 0.016;
+        const now = Date.now();
+        updateGameLogic();
+
+        if (playerMesh) {
+            if (currentPhase === 'FARMING') {
+                updatePlayerMovementFarming(delta);
+                checkItemPickup();
+                if(speedLines) speedLines.material.opacity = 0;
+                
+                const offset = new THREE.Vector3(0, 5, -8);
+                offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y + Math.PI); 
+                const targetCamPos = playerMesh.position.clone().add(offset);
+                camera.position.lerp(targetCamPos, 0.2); 
+                camera.lookAt(playerMesh.position);
+
+            } else if (currentPhase === 'RACING') {
+                updateVehiclePhysics(delta);
+                
+                // Camera Anti-Sickness
+                const camDist = 10;
+                const camHeight = 6;
+                const offset = new THREE.Vector3(0, camHeight, -camDist);
+                offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y + Math.PI); 
+                const targetCamPos = playerMesh.position.clone().add(offset);
+                
+                // Adjust camera for height in SKY map
+                targetCamPos.y = Math.max(targetCamPos.y, playerMesh.position.y + camHeight);
+
+                camera.position.lerp(targetCamPos, 0.5); 
+                camera.lookAt(playerMesh.position.x, playerMesh.position.y + 2, playerMesh.position.z);
+
+                if (speedLines) {
+                    if (Math.abs(vehicleSpeed) > 0.5) {
+                        speedLines.material.opacity = Math.min(0.5, (Math.abs(vehicleSpeed)-0.5)*0.5);
+                        speedLines.position.copy(playerMesh.position);
+                        speedLines.rotation.y = playerMesh.rotation.y; 
+                    } else {
+                        speedLines.material.opacity = 0;
+                    }
+                }
+            }
+        }
+
+        if (now - lastUpdate > 100 && myPlayerRef && playerMesh) {
+            updateNetwork();
+            lastUpdate = now;
+        }
+
+        for (const key in itemsMap) {
+            const item = itemsMap[key];
+            if (!item.taken) {
+                item.mesh.rotation.y += delta;
+                item.mesh.position.y = item.mesh.userData.yBase + Math.sin(now * 0.003 + item.mesh.userData.floatOffset) * 0.3;
+            }
+        }
+
+        for (const uid in otherPlayers) {
+            const p = otherPlayers[uid];
+            p.mesh.position.lerp(p.targetPos, 0.1);
+            p.mesh.rotation.y = p.data.rotation; 
+        }
+
+        renderer.render(scene, camera);
+    };
+
+    const updatePlayerMovementFarming = (delta) => {
+        const speed = moveSpeed;
+        const turnSpeed = 3.0;
+        
+        // Save old position for collision reversion
+        const oldPos = playerMesh.position.clone();
+
+        if (keys['w'] || keys['arrowup']) playerMesh.translateZ(-speed); 
+        if (keys['s'] || keys['arrowdown']) playerMesh.translateZ(speed);
+        if (keys['a'] || keys['arrowleft']) playerMesh.rotation.y += turnSpeed * delta;
+        if (keys['d'] || keys['arrowright']) playerMesh.rotation.y -= turnSpeed * delta;
+        
+        // Simple Collision with Decor
+        for(let obs of trackObstacles) {
+            if(playerMesh.position.distanceTo(obs.position) < 3.0) { // Hit radius
+                playerMesh.position.copy(oldPos); // Stop movement
+                break;
+            }
+        }
+
+        // Limit range
+        const limitR = 70;
+        if (playerMesh.position.length() > limitR) {
+            playerMesh.position.setLength(limitR);
+        }
+    };
+
+    const updateVehiclePhysics = (delta) => {
+        if (isRaceInputLocked || isFinished) {
+             vehicleSpeed *= 0.95; 
+             if(Math.abs(vehicleSpeed) < 0.01) vehicleSpeed = 0;
+             playerMesh.translateZ(-vehicleSpeed);
+             return; 
+        }
+
+        const enginePower = localVehicle.engine?.power || 5; 
+        const bodyWeight = localVehicle.body?.weight || 10; 
+        const bodyGrip = localVehicle.body?.grip || 0.5;
+        
+        // Dynamic Modifiers (Terrain)
+        let terrainSpeedMult = 1.0;
+        let terrainFrictionMult = 1.0;
+        let inMud = false;
+        let inUpdraft = false;
+
+        // Check Mud collision
+        for(let mud of mudSegments) {
+            if (playerMesh.position.z > mud.zMin && playerMesh.position.z < mud.zMax &&
+                playerMesh.position.x > mud.xMin && playerMesh.position.x < mud.xMax) {
+                inMud = true;
+                terrainSpeedMult = 0.5; // Half max speed
+                terrainFrictionMult = 3.0; // High drag
+                break;
+            }
+        }
+
+        // Show/Hide Mud Warning
+        document.getElementById('mud-warning').style.display = inMud ? 'block' : 'none';
+
+        // SKY Map Physics (Gravity & Updraft)
+        if (currentBiome === 'SKY') {
+            // Gravity
+            verticalVelocity -= 0.01; // Gravity constant
+
+            // Check Updraft collision
+            for(let updraft of updraftZones) {
+                const dist = Math.sqrt((playerMesh.position.x - updraft.x)**2 + (playerMesh.position.z - updraft.z)**2);
+                if (dist < updraft.radius) {
+                    inUpdraft = true;
+                    // Lift calculation: lighter body = more lift
+                    // Height factor: less force as you go higher
+                    const heightFactor = Math.max(0, 1 - (playerMesh.position.y / updraft.maxHeight));
+                    const liftForce = updraft.strength * (20 / bodyWeight) * heightFactor;
+                    
+                    verticalVelocity += liftForce * 0.1; // Accumulate upward velocity
+                }
+            }
+
+            // Apply Vertical Velocity
+            playerMesh.position.y += verticalVelocity;
+
+            // Floor Constraint (Cloud base)
+            if (playerMesh.position.y < 0) {
+                playerMesh.position.y = 0;
+                verticalVelocity = 0;
+            }
+            
+            // Ceiling Constraint (optional)
+            if (playerMesh.position.y > 50) {
+                playerMesh.position.y = 50;
+                verticalVelocity = 0;
+            }
+        }
+        
+        // Show/Hide Updraft Warning
+        document.getElementById('updraft-indicator').style.display = inUpdraft ? 'block' : 'none';
+
+
+        const myMaxSpeed = (1.0 + (enginePower * 0.04)) * terrainSpeedMult; 
+        const myAccel = 0.01 + (enginePower * 0.001) - (bodyWeight * 0.0005);
+        const turnRate = 2.0 * (1 - (bodyWeight * 0.02)); 
+
+        let isBoosting = false;
+        if (keys['shift'] && boostCharge > 0) {
+            isBoosting = true;
+            boostCharge -= 0.1; 
+            document.getElementById('boost-bar').style.transform = `scaleX(${boostCharge/maxBoost})`;
+        }
+
+        if (keys['w'] || keys['arrowup']) {
+            vehicleSpeed += myAccel * (isBoosting ? 2.5 : 1.0);
+        } else if (keys['s'] || keys['arrowdown']) {
+            vehicleSpeed -= myAccel;
+        } else {
+            // Coasting friction affected by mud
+            vehicleSpeed *= (1 - (0.01 * terrainFrictionMult)); 
+        }
+        
+        const currentMax = myMaxSpeed * (isBoosting ? 1.5 : 1.0);
+        if (vehicleSpeed > currentMax) vehicleSpeed = currentMax; // Cap speed immediately if hitting mud
+        if (vehicleSpeed < -currentMax/2) vehicleSpeed = -currentMax/2;
+
+        // FIXED STEERING: Removed vehicleSpeed check to allow pivot turns
+        // Also removed direction flip on reverse
+        if (true) { // Always allow steering
+            let turnAmt = turnRate * delta; 
+            // Invert controls on reverse? Standard arcade: Left is Left.
+            // But if moving backwards, Left key turns car Left (which looks like Right relative to camera facing back)
+            // Actually, keep it simple: Left key rotates Mesh Y positive.
+            if (keys['a'] || keys['arrowleft']) {
+                playerMesh.rotation.y += turnAmt;
+                vehicleSpeed *= 0.995;
+            }
+            if (keys['d'] || keys['arrowright']) {
+                playerMesh.rotation.y -= turnAmt;
+                vehicleSpeed *= 0.995;
+            }
+        }
+
+        playerMesh.translateZ(-vehicleSpeed);
+
+        // Collision: Wall (Slide)
+        const limit = TRACK_WIDTH / 2 - 2; 
+        if (playerMesh.position.x > limit) {
+            playerMesh.position.x = limit;
+            vehicleSpeed *= 0.8; 
+        }
+        if (playerMesh.position.x < -limit) {
+            playerMesh.position.x = -limit;
+            vehicleSpeed *= 0.8;
+        }
+
+        // Collision: Start Line (Back wall) - NEW
+        if (playerMesh.position.z > 45) {
+            playerMesh.position.z = 45;
+            if (vehicleSpeed < 0) vehicleSpeed = 0; 
+        }
+
+        // Collision: Obstacles (Bounce)
+        for(let obs of trackObstacles) {
+            const dist = playerMesh.position.distanceTo(obs.position);
+            const radiusSum = 2.5; // Approx
+            
+            if (dist < radiusSum) {
+                // Calculate push direction
+                const pushVec = new THREE.Vector3().subVectors(playerMesh.position, obs.position).normalize();
+                // Move player out
+                playerMesh.position.add(pushVec.multiplyScalar(radiusSum - dist + 0.1));
+                
+                // BOUNCE physics
+                vehicleSpeed *= -0.5; 
+            }
+        }
+        
+        if (playerMesh.position.z <= -1000 && !isFinished) {
+            isFinished = true;
+            document.getElementById('finish-layer').style.display = 'flex';
+            document.getElementById('timer').innerText = "FINISHED";
+            updateDoc(myPlayerRef, { finished: true, finishTime: Date.now() });
+            vehicleSpeed = 0;
+        }
+    };
+
+    const checkItemPickup = () => {
+        // Highlight closest
+        let closestItem = null;
+        let minDst = 999;
+        
+        for (const key in itemsMap) {
+            const item = itemsMap[key];
+            if (item.taken) continue;
+            const dist = playerMesh.position.distanceTo(item.mesh.position);
+            if(dist < minDst) {
+                minDst = dist;
+                closestItem = item;
+            }
+        }
+
+        if(closestItem && targetIndicator) {
+             targetIndicator.visible = true;
+             targetIndicator.position.copy(closestItem.mesh.position);
+             targetIndicator.position.y += 2;
+             targetIndicator.rotation.y += 0.05; // Spin
+        } else if (targetIndicator) {
+            targetIndicator.visible = false;
+        }
+
+        if (!keys[' ']) return; 
+        if (localInventory.length >= 8) return;
+
+        // Pickup closest if within range
+        if (closestItem && minDst < 3.0) {
+            closestItem.taken = true; 
+            closestItem.mesh.visible = false;
+            localInventory.push(closestItem.type);
+            updateInventoryUI();
+            
+            const update = {};
+            update[`takenItems.${closestItem.id}`] = myUser.uid;
+            updateDoc(lobbyRef, update).catch(e => console.log("Too slow grabbing item", e));
+            updateDoc(myPlayerRef, { inventory: arrayUnion(closestItem.type) });
+            
+            keys[' '] = false; // Debounce
+        }
+    };
+
+    const handleGlobalInput = (e) => {
+        if (currentPhase === 'RACING') {
+            if (['1','2','3'].includes(e.key)) {
+                showEmote(playerMesh, e.key);
+                updateDoc(myPlayerRef, { emote: { type: e.key, time: Date.now() } });
+            }
+        }
+    };
+
+    const updateNetwork = () => {
+        updateDoc(myPlayerRef, {
+            x: playerMesh.position.x,
+            y: playerMesh.position.y,
+            z: playerMesh.position.z,
+            rotation: playerMesh.rotation.y
+        }).catch(() => {});
+    };
+
+    // --- OTHER PLAYERS ---
+    const spawnOtherPlayer = (id, data) => {
+        const geo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(data.x, data.y, data.z);
+        scene.add(mesh);
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshBasicMaterial({color: 0xffffff}));
+        head.position.y = 0.8;
+        mesh.add(head);
+
+        otherPlayers[id] = { mesh, targetPos: new THREE.Vector3(data.x, data.y, data.z), data };
+    };
+
+    const updateOtherPlayer = (id, data) => {
+        if (otherPlayers[id]) {
+            otherPlayers[id].targetPos.set(data.x, data.y, data.z);
+            otherPlayers[id].data = data; 
+            
+            if (data.vehicle && !otherPlayers[id].hasVehicleModel) {
+                otherPlayers[id].mesh.material.color.setHex(0xFFD700);
+                otherPlayers[id].hasVehicleModel = true;
+            }
+            if (data.emote && data.emote.time > Date.now() - 2000) {
+                 showEmote(otherPlayers[id].mesh, data.emote.type);
+            }
+        }
+    };
+
+    const removeOtherPlayer = (id) => {
+        if (otherPlayers[id]) {
+            scene.remove(otherPlayers[id].mesh);
+            delete otherPlayers[id];
+        }
+    };
+
+    const showEmote = (mesh, type) => {
+        const emojiChar = EMOTES[type] || '😀';
+        const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+        const ctx = canvas.getContext('2d'); ctx.font = "100px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(emojiChar, 64, 64);
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({ map: tex });
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.copy(mesh.position); sprite.position.y += 3.5; sprite.scale.set(3, 3, 1);
+        scene.add(sprite);
+        let life = 1.0;
+        const floatAnim = setInterval(() => {
+            sprite.position.y += 0.05; life -= 0.02; sprite.material.opacity = life;
+            if (life <= 0) { scene.remove(sprite); clearInterval(floatAnim); }
+        }, 30);
+    };
+
+    // --- UI & PHASES ---
+    const onPhaseChange = (phase) => {
+        document.getElementById('notification').innerText = `${phase} PHASE STARTED!`;
+        document.getElementById('notification').parentElement.style.opacity = '1';
+        setTimeout(() => document.getElementById('notification').parentElement.style.opacity = '0', 3000);
+
+        if (phase === 'FARMING') {
+            document.getElementById('inventory-bar').classList.remove('hidden');
+            // Regen env for Farming
+            generateEnvironment(currentBiome, 'FARMING');
+            // Reset position
+            playerMesh.position.set(0,1,0);
+            
+            // Show Hint
+            document.getElementById('farming-hint').classList.remove('hidden');
+        } else {
+            document.getElementById('farming-hint').classList.add('hidden');
+        }
+        
+        if (phase === 'CRAFTING') {
+            document.getElementById('inventory-bar').classList.add('hidden');
+            openCraftingUI();
+        } else if (phase === 'RACING') {
+            document.getElementById('crafting-screen').style.display = 'none';
+            document.getElementById('race-controls').classList.remove('hidden');
+            document.getElementById('boost-container').style.display = 'block';
+            
+            // CLEAR ITEMS
+            Object.values(itemsMap).forEach(i => scene.remove(i.mesh));
+            itemsMap = {};
+            if(targetIndicator) targetIndicator.visible = false;
+            
+            // Regen env for Racing
+            generateEnvironment(currentBiome, 'RACING');
+            
+            startRaceMode();
+            initRaceSequence(); 
+        }
+    };
+
+    const initRaceSequence = () => {
+        isRaceInputLocked = true;
+        const layer = document.getElementById('countdown-layer');
+        const text = document.getElementById('countdown-text');
+        layer.style.display = 'flex';
+        let count = 3;
+        text.innerText = count;
+        const interval = setInterval(() => {
+            count--;
+            if (count > 0) text.innerText = count;
+            else if (count === 0) { text.innerText = "GO!"; text.style.color = "#4ade80"; isRaceInputLocked = false; }
+            else { layer.style.display = 'none'; clearInterval(interval); }
+        }, 1000);
+    };
+
+    // Crafting UI
+    let selectedItem = null;
+    const openCraftingUI = () => {
+        const screen = document.getElementById('crafting-screen');
+        screen.style.display = 'flex';
+        
+        document.getElementById('crafting-content').classList.remove('hidden');
+        document.getElementById('crafting-content').classList.add('flex');
+        document.getElementById('crafting-waiting').classList.add('hidden');
+        document.getElementById('crafting-waiting').classList.remove('flex');
+        
+        const invContainer = document.getElementById('crafting-inventory');
+        invContainer.innerHTML = '';
+        
+        // Render inventory
+        const renderInventory = () => {
+            invContainer.innerHTML = '';
+            localInventory.forEach((item, index) => {
+                const el = document.createElement('div');
+                el.className = 'item-card';
+                el.innerHTML = `<span style="font-size:20px; margin-bottom:2px;">${getIcon(item)}</span><span style="line-height:1;">${item.name}</span>`;
+                if(selectedItem === item) el.classList.add('selected');
+                
+                el.onclick = () => {
+                    // Deselect if clicking same
+                    if (selectedItem === item) {
+                        selectedItem = null;
+                        el.classList.remove('selected');
+                    } else {
+                        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
+                        el.classList.add('selected');
+                        selectedItem = item;
+                    }
+                };
+                invContainer.appendChild(el);
+            });
+        };
+        renderInventory();
+
+        // Slot click handlers
+        ['body', 'engine', 'special'].forEach(slotType => {
+            const slot = document.getElementById(`slot-${slotType}`);
+            slot.onclick = () => {
+                if (selectedItem) {
+                    // If slot has item, return it to inventory
+                    if (localVehicle[slotType]) {
+                        localInventory.push(localVehicle[slotType]);
+                    }
+                    
+                    // Assign new
+                    localVehicle[slotType] = selectedItem;
+                    
+                    // Update Slot UI
+                    slot.innerHTML = `<span style="font-size:24px;">${getIcon(selectedItem)}</span><br>${selectedItem.name}`;
+                    slot.classList.add('filled');
+                    slot.style.borderColor = '#' + selectedItem.color.toString(16);
+                    
+                    // Remove from local inventory array
+                    const idx = localInventory.indexOf(selectedItem);
+                    if(idx > -1) localInventory.splice(idx, 1);
+                    
+                    selectedItem = null;
+                    renderInventory(); // Re-render inventory list
+                    updateStatsPreview();
+                } else if (localVehicle[slotType]) {
+                    // If clicking filled slot without selection, remove item
+                    localInventory.push(localVehicle[slotType]);
+                    localVehicle[slotType] = null;
+                    
+                    slot.innerHTML = 'Empty';
+                    slot.classList.remove('filled');
+                    slot.style.borderColor = '#666';
+                    
+                    renderInventory();
+                    updateStatsPreview();
+                }
+            };
+        });
+
+        document.getElementById('btn-ready').onclick = () => deployVehicle(false);
+    };
+
+    const getIcon = (item) => {
+        if(item.icon) return item.icon;
+        return '📦';
+    };
+
+    const updateStatsPreview = () => {
+        // Base
+        let spd = 20, acc = 20, trn = 20, bst = 0;
+        
+        // SAFE ACCESS to properties with defaults
+        const pwr = localVehicle.engine?.power || 0;
+        const wgt = localVehicle.body?.weight || 0;
+        const bstVal = localVehicle.special?.boost || 0;
+
+        if (localVehicle.engine) {
+            spd += pwr * 2;
+            acc += pwr * 1;
+        }
+        if (localVehicle.body) {
+            trn -= wgt * 1; 
+            acc -= wgt * 0.5;
+        }
+        if (localVehicle.special) {
+            bst += bstVal;
+        }
+
+        // Clamp 0-100
+        const setBar = (id, val) => document.getElementById(id).style.width = Math.min(100, Math.max(0, val)) + '%';
+        setBar('stat-speed', spd);
+        setBar('stat-accel', acc);
+        setBar('stat-turn', trn);
+        setBar('stat-boost', bst);
+    };
+
+    const deployVehicle = (force) => {
+        if (isDeployed && !force) return;
+        
+        isDeployed = true;
+        // If parts missing, random fill? Or just go empty (stats handle empty)
+        // Let's just go with what we have.
+        
+        updateDoc(myPlayerRef, { vehicle: localVehicle });
+
+        document.getElementById('crafting-content').classList.add('hidden');
+        document.getElementById('crafting-content').classList.remove('flex');
+        document.getElementById('crafting-waiting').classList.remove('hidden');
+        document.getElementById('crafting-waiting').classList.add('flex');
+    };
+
+    const updateInventoryUI = () => {
+        const bar = document.getElementById('inventory-bar');
+        bar.innerHTML = '';
+        localInventory.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'w-10 h-10 bg-gray-700 border border-gray-500 rounded flex items-center justify-center text-lg';
+            div.innerHTML = getIcon(item);
+            div.title = item.name;
+            bar.appendChild(div);
+        });
+    };
+
+    const startRaceMode = () => {
+        // Position at start line
+        playerMesh.position.set(0, 1, 40); 
+        playerMesh.rotation.set(0, Math.PI, 0); // Face forward (-Z)
+
+        scene.remove(playerMesh);
+        
+        const vehGroup = new THREE.Group();
+        const mainColor = 0xff0055; 
+
+        // 1. MAIN BODY (CHASSIS) - Based on selected Body Item
+        let chassis;
+        if (localVehicle.body) {
+            chassis = createObjectMesh(localVehicle.body);
+            // Rotations based on item config
+            const rot = localVehicle.body.rotBody || [0,0,0];
+            chassis.rotation.set(rot[0], rot[1], rot[2]);
+            // Scale up slightly for vehicle size
+            chassis.scale.set(2.5, 2.5, 2.5); // BIGGER BODY
+        } else {
+            // Default Box if empty
+            chassis = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 3), new THREE.MeshStandardMaterial({color: mainColor}));
+        }
+        vehGroup.add(chassis);
+
+        // 2. BIOME-SPECIFIC PARTS (Wheels/Wings/Base)
+        if (currentBiome === 'OCEAN') { // BOAT
+            // Add a floaty base underneath
+            const floatGeo = new THREE.CylinderGeometry(0.8, 0.8, 4, 16);
+            const floatMat = new THREE.MeshStandardMaterial({color: 0x333333});
+            
+            const f1 = new THREE.Mesh(floatGeo, floatMat); f1.rotation.z = Math.PI/2; f1.position.set(0, -1.0, 1.5);
+            const f2 = f1.clone(); f2.position.set(0, -1.0, -1.5);
+            
+            vehGroup.add(f1, f2);
+        } else if (currentBiome === 'SKY') { // PLANE
+            // Add Wings attached to side
+            const wingGeo = new THREE.BoxGeometry(6, 0.1, 1.5);
+            const wings = new THREE.Mesh(wingGeo, new THREE.MeshStandardMaterial({color: 0xCCCCCC}));
+            wings.position.y = 0; // Center height of body
+            vehGroup.add(wings);
+        } else { // CAR (Default)
+            // Add Wheels relative to body center bounding box approximation
+            const wheelGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 12);
+            const wheelMat = new THREE.MeshStandardMaterial({color: 0x111111});
+            
+            const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.rotation.z = Math.PI/2; w1.position.set(-2.0, -0.5, 1.5);
+            const w2 = w1.clone(); w2.position.set(2.0, -0.5, 1.5);
+            const w3 = w1.clone(); w3.position.set(-2.0, -0.5, -1.5);
+            const w4 = w1.clone(); w4.position.set(2.0, -0.5, -1.5);
+            
+            vehGroup.add(w1, w2, w3, w4);
+        }
+
+        // 3. ATTACH OTHER PARTS
+        if (localVehicle.engine) {
+            const part = createObjectMesh(localVehicle.engine);
+            // Default Engine position (Back)
+            part.position.set(0, 1.0, -2.5); 
+            // Rotation from config (usually none for engines unless special)
+            const rot = localVehicle.engine.rotBody || [0,0,0]; // Reuse body rot or default? 
+            // Actually engines need their own orientation logic usually facing back.
+            // Let's assume engines are modeled to face +Z or -Z.
+            // Our models face various ways. Let's fix them in createObjectMesh or rotate here.
+            // Simplified: Just place it.
+            
+            if(currentBiome === 'SKY') part.position.set(0, 0, -3.0); // Rear thrust
+            vehGroup.add(part);
+        }
+        if (localVehicle.special) {
+            const part = createObjectMesh(localVehicle.special);
+            
+            // Special Part Position Logic based on Biome
+            if (currentBiome === 'FOREST') { // Car: Rear/Trunk
+                 part.position.set(0, 1.5, -2.0);
+            } else if (currentBiome === 'SKY') { // Plane: Tail
+                 part.position.set(0, 0.5, -2.5);
+            } else { // Boat: Front/Bow
+                 part.position.set(0, 1.0, 2.5);
+            }
+
+            const rot = localVehicle.special.rotSpecial || [0,0,0];
+            part.rotation.set(rot[0], rot[1], rot[2]);
+            
+            vehGroup.add(part);
+        }
+
+        vehGroup.position.copy(playerMesh.position);
+        playerMesh = vehGroup;
+        scene.add(playerMesh);
+
+        // Boost setup
+        if (localVehicle.special) {
+            maxBoost = localVehicle.special.boost || 50;
+        } else {
+            maxBoost = 20; 
+        }
+        boostCharge = maxBoost;
+        document.getElementById('boost-bar').style.transform = `scaleX(1)`;
+
+        camera.position.y += 5;
+    };
+
+    initGame();
+
+</script>
+</body>
+</html>
