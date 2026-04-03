@@ -1,10 +1,6 @@
 {
   "name": "CatastrophicDayPreview",
   "tree": {
-    "$className": "Script",
-    "$path": "MapPreviewPlugin.lua",
-    "$properties": {
-      "Name": "CatastrophicDayPreview"
-    }
+    "$path": "MapPreviewPlugin.server.lua"
   }
 }
