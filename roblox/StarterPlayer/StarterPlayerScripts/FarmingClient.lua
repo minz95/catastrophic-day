@@ -67,10 +67,11 @@ local function _scanNearby()
 	local nearestPlayer = nil
 	local nearestPlayerDist = math.huge
 
-	-- Scan items
+	-- Scan items: FarmingManager places a StringValue named "ItemName" on each
+	-- item's PrimaryPart, so we detect items by that value rather than by name prefix.
 	local parts = workspace:GetPartBoundsInRadius(root.Position, Constants.PICKUP_RANGE)
 	for _, part in ipairs(parts) do
-		if part.Name:sub(1, 5) == "Item_" then
+		if part:FindFirstChild("ItemName") then
 			local d = (part.Position - root.Position).Magnitude
 			if d < nearestItemDist then
 				nearestItemDist = d

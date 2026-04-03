@@ -25,7 +25,7 @@ local GameManager  = require(ServerScriptService.GameManager)
 -- }
 
 local PlayerData = {}
-SessionManager = {}
+local SessionManager = {}
 
 -- ─── Skin slot tracker ────────────────────────────────────────────────────────
 
