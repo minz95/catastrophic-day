@@ -269,4 +269,16 @@ function FarmingClient.disable()
 	_contestPresses = 0
 end
 
+-- ─── Self-manage via PhaseChanged ────────────────────────────────────────────
+-- Activates without relying on GameClient.require() chain, which can fail
+-- silently when file renames cause Rojo sync inconsistencies.
+
+RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
+	if phase == Constants.PHASES.FARMING then
+		FarmingClient.enable()
+	else
+		FarmingClient.disable()
+	end
+end)
+
 return FarmingClient

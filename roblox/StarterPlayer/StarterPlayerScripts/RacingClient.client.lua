@@ -377,4 +377,14 @@ RemoteEvents.BiomeSelected.OnClientEvent:Connect(function(biome)
 	_biome = biome
 end)
 
+-- ─── Self-manage via PhaseChanged ────────────────────────────────────────────
+
+RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
+	if phase == Constants.PHASES.RACING then
+		RacingClient.enable()
+	else
+		RacingClient.disable()
+	end
+end)
+
 return RacingClient
