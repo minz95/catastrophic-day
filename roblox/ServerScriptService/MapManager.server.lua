@@ -153,21 +153,19 @@ end
 -- ─── Phase listener ───────────────────────────────────────────────────────────
 
 GameManager.onPhaseChanged(function(phase, biome)
-	if phase == Constants.PHASES.LOBBY then
-		-- Select biome during lobby so players see the reveal
-		task.delay(5, function()
-			if _currentBiome then return end  -- already selected
-			_selectAndLoadBiome()
-		end)
+	-- IMPORTANT: use the biome provided by GameManager (already authoritative).
+	-- Never call BiomeConfig.random() here — GameManager owns biome selection.
+	-- Previously MapManager picked its own random biome, causing it to show a
+	-- different map than the one FarmingManager was spawning items into.
 
-	elseif phase == Constants.PHASES.FARMING then
-		-- Ensure biome is selected (in case lobby delay hasn't fired yet)
-		if not _currentBiome then
-			_selectAndLoadBiome()
-		end
+	if phase == Constants.PHASES.FARMING then
+		if not biome then return end
+		_currentBiome = biome
+		_hideAllMaps()
+		_showMap(biome)
+		_applyLighting(biome)
 
 	elseif phase == Constants.PHASES.RESULTS then
-		-- Reset for next round
 		task.delay(Constants.PHASE_DURATION.RESULTS or 15, function()
 			_currentBiome = nil
 		end)

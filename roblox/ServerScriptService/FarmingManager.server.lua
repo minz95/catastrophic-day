@@ -57,11 +57,27 @@ local function _spawnItems(biome)
 		return
 	end
 
-	-- Determine scatter area from map bounding box
+	-- Scatter items in FarmArea sub-model if present; otherwise fixed farm zone.
+	-- Using full map bounding box caused items to spawn on the race track.
+	local farmModel = mapModel:FindFirstChild("FarmArea")
 	local cf, size = mapModel:GetBoundingBox()
-	local halfX = math.min(size.X * 0.4, 150)
-	local halfZ = math.min(size.Z * 0.4, 150)
-	local baseY = cf.Position.Y + 2
+	local spawnCX, spawnCZ, halfX, halfZ, baseY
+
+	if farmModel then
+		local fcf, fsize = farmModel:GetBoundingBox()
+		spawnCX = fcf.Position.X
+		spawnCZ = fcf.Position.Z
+		halfX   = math.min(fsize.X * 0.45, 80)
+		halfZ   = math.min(fsize.Z * 0.45, 150)
+		baseY   = fcf.Position.Y + 2
+	else
+		-- Fallback hardcoded farm zone (Z = 200 to 500, centre of FOREST farm)
+		spawnCX = cf.Position.X
+		spawnCZ = 350
+		halfX   = 80
+		halfZ   = 140
+		baseY   = cf.Position.Y + 2
+	end
 
 	local usedPositions = {}
 	local MIN_SEPARATION = 6  -- studs
@@ -76,9 +92,9 @@ local function _spawnItems(biome)
 		local pos
 		for _ = 1, 20 do
 			local candidate = Vector3.new(
-				cf.Position.X + (math.random() * 2 - 1) * halfX,
+				spawnCX + (math.random() * 2 - 1) * halfX,
 				baseY,
-				cf.Position.Z + (math.random() * 2 - 1) * halfZ
+				spawnCZ + (math.random() * 2 - 1) * halfZ
 			)
 			local ok = true
 			for _, used in ipairs(usedPositions) do
