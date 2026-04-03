@@ -9,11 +9,13 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage       = game:GetService("ServerStorage")
 
-local Constants    = require(ReplicatedStorage.Shared.Constants)
-local RemoteEvents = require(ReplicatedStorage.RemoteEvents)
-local ItemConfig   = require(ServerScriptService.Modules.ItemConfig)
-local GameManager  = require(ServerScriptService.GameManager)
+local Constants      = require(ReplicatedStorage.Shared.Constants)
+local RemoteEvents   = require(ReplicatedStorage.RemoteEvents)
+local ItemConfig     = require(ServerScriptService.Modules.ItemConfig)
+local GameManager    = require(ServerScriptService.GameManager)
 local SessionManager = require(ServerScriptService.SessionManager)
+local ItemModelBuilder  = require(ServerScriptService.Modules.ItemModelBuilder)
+local ItemVisualUpgrader = require(ServerScriptService.Modules.ItemVisualUpgrader)
 
 -- ─── State ────────────────────────────────────────────────────────────────────
 
@@ -94,39 +96,72 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Create world part
-		local part = Instance.new("Part")
-		part.Name  = "Item_" .. i
-		part.Size  = Vector3.new(1.5, 1.5, 1.5)
-		part.CFrame = CFrame.new(pos)
-		part.Anchored = true
-		part.CanCollide = false
+		-- Build 3D model from ItemModelBuilder
+		local model = ItemModelBuilder.build(entry.name, mapModel)
+		local primary = model.PrimaryPart
+		if not primary then
+			model:Destroy()
+			continue
+		end
 
-		-- Tag with rarity colour as a visual hint
-		local rarityColours = {
-			Common   = Color3.fromRGB(200, 200, 200),
-			Uncommon = Color3.fromRGB(80,  200, 80),
-			Rare     = Color3.fromRGB(50,  100, 220),
-			Epic     = Color3.fromRGB(150, 60,  220),
-		}
-		part.Color = rarityColours[entry.rarity] or part.Color
+		-- Position model
+		model:SetPrimaryPartCFrame(CFrame.new(pos))
+		primary.Anchored  = true
+		primary.CanCollide = false
 
-		-- Metadata
+		-- Metadata on PrimaryPart (for pickup detection)
 		local nameVal = Instance.new("StringValue")
 		nameVal.Name  = "ItemName"
 		nameVal.Value = entry.name
-		nameVal.Parent = part
+		nameVal.Parent = primary
 
 		local rarityVal = Instance.new("StringValue")
 		rarityVal.Name  = "Rarity"
 		rarityVal.Value = entry.rarity
-		rarityVal.Parent = part
+		rarityVal.Parent = primary
 
-		part.Parent = mapModel
+		-- Rarity visuals + idle float/rotate
+		ItemVisualUpgrader.apply(model, entry.rarity)
 
-		local itemId = tostring(part)
+		-- Billboard label above item (always visible)
+		local billboard = Instance.new("BillboardGui")
+		billboard.Size         = UDim2.new(0, 120, 0, 44)
+		billboard.StudsOffset  = Vector3.new(0, 3.5, 0)
+		billboard.AlwaysOnTop  = false
+		billboard.ResetOnSpawn = false
+		billboard.Parent       = primary
+
+		local icon = Instance.new("TextLabel")
+		icon.Size             = UDim2.new(1, 0, 0.55, 0)
+		icon.BackgroundTransparency = 1
+		icon.Text             = (cfg.icon or "?")
+		icon.TextScaled       = true
+		icon.Font             = Enum.Font.GothamBold
+		icon.TextColor3       = Color3.new(1, 1, 1)
+		icon.Parent           = billboard
+
+		local nameLbl = Instance.new("TextLabel")
+		nameLbl.Size          = UDim2.new(1, 0, 0.45, 0)
+		nameLbl.Position      = UDim2.new(0, 0, 0.55, 0)
+		nameLbl.BackgroundTransparency = 1
+		nameLbl.Text          = entry.name
+		nameLbl.TextScaled    = true
+		nameLbl.Font          = Enum.Font.Gotham
+		local rarityColour = ({
+			Common   = Color3.fromRGB(200, 200, 200),
+			Uncommon = Color3.fromRGB(80,  200, 80),
+			Rare     = Color3.fromRGB(100, 160, 255),
+			Epic     = Color3.fromRGB(200, 100, 255),
+		})[entry.rarity] or Color3.new(1,1,1)
+		nameLbl.TextColor3    = rarityColour
+		nameLbl.TextStrokeTransparency = 0.4
+		nameLbl.Parent        = billboard
+
+		-- Register: use primary part as the "part" reference for pickup detection
+		local itemId = tostring(primary)
 		_items[itemId] = {
-			part     = part,
+			part     = primary,
+			model    = model,
 			itemName = entry.name,
 			rarity   = entry.rarity,
 			taken    = false,
@@ -146,9 +181,19 @@ local function _giveItem(player, itemId)
 
 	item.taken = true
 	table.insert(data.inventory, item.itemName)
-	item.part:Destroy()
 
-	RemoteEvents.ItemPickedUp:FireAllClients(itemId, player.UserId)
+	-- Stop idle animation then destroy full model
+	if item.model then
+		ItemVisualUpgrader.stopIdle(item.model)
+		item.model:Destroy()
+	else
+		item.part:Destroy()
+	end
+
+	RemoteEvents.ItemPickedUp:FireAllClients(itemId, player.UserId, {
+		rarity = item.rarity,
+		userId = player.UserId,
+	})
 	RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
 	return true
 end
@@ -327,8 +372,13 @@ GameManager.onPhaseChanged(function(phase, biome)
 		_contests = {}
 		-- Destroy any remaining unclaimed items
 		for _, item in pairs(_items) do
-			if not item.taken and item.part and item.part.Parent then
-				item.part:Destroy()
+			if not item.taken then
+				if item.model and item.model.Parent then
+					ItemVisualUpgrader.stopIdle(item.model)
+					item.model:Destroy()
+				elseif item.part and item.part.Parent then
+					item.part:Destroy()
+				end
 			end
 		end
 		_items = {}
