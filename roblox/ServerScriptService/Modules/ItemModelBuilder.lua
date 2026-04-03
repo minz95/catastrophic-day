@@ -972,9 +972,9 @@ function ItemModelBuilder.build(itemName, parent)
 
 	local primary = builder(model)
 	model.PrimaryPart = primary
-	model.Parent = parent
 
-	-- Weld all loose parts to primary
+	-- Weld all loose parts BEFORE parenting to world so physics never sees
+	-- unanchored, un-welded parts (they would fall through the floor otherwise).
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") and part ~= primary then
 			local hasWeld = false
@@ -989,6 +989,9 @@ function ItemModelBuilder.build(itemName, parent)
 			if not hasWeld then _w(model, primary, part) end
 		end
 	end
+
+	-- Parent after welds are set so the simulation starts with everything locked.
+	model.Parent = parent
 
 	return model
 end
