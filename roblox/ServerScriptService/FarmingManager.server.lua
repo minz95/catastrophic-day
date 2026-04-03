@@ -78,7 +78,16 @@ local function _spawnItems(biome)
 		spawnCZ = 350
 		halfX   = 80
 		halfZ   = 140
-		baseY   = cf.Position.Y + 2
+		-- Find FarmGround part to get correct Y; fallback to Y=2 (ground surface).
+		-- NOTE: GetBoundingBox() returns the map CENTRE which is way up in the air
+		-- when tall trees are included — items would spawn floating invisibly.
+		local farmGround = mapModel:FindFirstChild("FarmGround")
+		if farmGround and farmGround:IsA("BasePart") then
+			baseY = farmGround.Position.Y + farmGround.Size.Y / 2 + 1.5
+		else
+			baseY = 2  -- ground level default
+		end
+		print(string.format("[FarmingManager] Spawn zone: cx=%d cz=%d baseY=%.1f", spawnCX, spawnCZ, baseY))
 	end
 
 	local usedPositions = {}
@@ -383,7 +392,11 @@ GameManager.onPhaseChanged(function(phase, biome)
 	if phase == Constants.PHASES.FARMING then
 		_active = true
 		_farmingStartTick = tick()
+		print("[FarmingManager] Starting FARMING phase, biome =", biome)
 		_spawnItems(biome)
+		print("[FarmingManager] After spawn: total items registered =", (function()
+			local n = 0; for _ in pairs(_items) do n = n + 1 end; return n
+		end)())
 
 	elseif phase == Constants.PHASES.CRAFTING then
 		_active = false

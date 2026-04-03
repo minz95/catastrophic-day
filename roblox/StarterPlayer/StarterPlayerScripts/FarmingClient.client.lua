@@ -145,6 +145,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or not _enabled then return end
 
 	if input.KeyCode == Enum.KeyCode.E then
+		print("[FarmingClient] E pressed | enabled=", _enabled, " nearestItem=", tostring(_nearestItem), " nearestPlayer=", tostring(_nearestPlayer))
 		if _contestItemId then
 			-- We're in a contest — count presses
 			_contestPresses = _contestPresses + 1
@@ -153,7 +154,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 
 		if _nearestItem then
+			print("[FarmingClient] Requesting pickup:", tostring(_nearestItem))
 			local result = RemoteEvents.RequestPickup:InvokeServer(tostring(_nearestItem))
+			print("[FarmingClient] Pickup result:", result)
 			if result == "ok" then
 				_hidePrompt()
 				_nearestItem = nil
@@ -274,8 +277,10 @@ end
 -- silently when file renames cause Rojo sync inconsistencies.
 
 RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
+	print("[FarmingClient] PhaseChanged received:", phase)
 	if phase == Constants.PHASES.FARMING then
 		FarmingClient.enable()
+		print("[FarmingClient] Enabled, scanning for items every heartbeat")
 	else
 		FarmingClient.disable()
 	end
