@@ -15,33 +15,42 @@ local Constants        = require(ReplicatedStorage.Shared.Constants)
 -- 10 points arranged in a 2×5 grid around the farm area center.
 -- These are fallback positions; Studio map should have Parts tagged "FarmSpawn".
 
-local FARM_SPAWN_CENTER = Vector3.new(0, 3, 200)
-local SPAWN_SPACING     = 8
+local SPAWN_SPACING = 8
 
-local function _getFarmSpawnPoints()
-	local tagged = game:GetService("CollectionService"):GetTagged("FarmSpawn")
-	if #tagged >= Constants.MAX_PLAYERS then
-		-- Use tagged Parts from the map
+-- Biome-specific fallback spawn centres (used when no FarmSpawn tags found in map)
+local BIOME_SPAWN_DEFAULTS = {
+	FOREST = Vector3.new(0,  3,  200),
+	OCEAN  = Vector3.new(0,  3,  200),
+	SKY    = Vector3.new(0, 86,  390),  -- matches SkyMapBuilder SKY_BASE_Y + 4.5 + 1.5
+}
+
+-- Returns CFrame array of spawn points for the given biome.
+-- Filters CollectionService "FarmSpawn" tags to only those inside the active map model
+-- so Forest/Ocean/Sky spawn points don't bleed into each other.
+local function _getFarmSpawnPoints(biome)
+	local mapName  = biome and (biome:sub(1,1):upper() .. biome:sub(2):lower() .. "Map") or ""
+	local mapModel = workspace:FindFirstChild("Maps") and workspace.Maps:FindFirstChild(mapName)
+
+	if mapModel then
+		-- Collect only FarmSpawn parts that are descendants of THIS biome's map
 		local points = {}
-		for i, part in ipairs(tagged) do
-			points[i] = part.CFrame + Vector3.new(0, 3, 0)
-			if i >= Constants.MAX_PLAYERS then break end
+		for _, part in ipairs(game:GetService("CollectionService"):GetTagged("FarmSpawn")) do
+			if part:IsDescendantOf(mapModel) then
+				table.insert(points, part.CFrame + Vector3.new(0, 3, 0))
+			end
 		end
-		return points
+		if #points >= 1 then
+			return points
+		end
 	end
 
-	-- Fallback: generate a 2×5 grid
+	-- Fallback: biome-specific 2×5 grid
+	local center = (biome and BIOME_SPAWN_DEFAULTS[biome]) or BIOME_SPAWN_DEFAULTS.FOREST
 	local points = {}
 	for row = 0, 1 do
 		for col = 0, 4 do
 			local idx = row * 5 + col + 1
-			points[idx] = CFrame.new(
-				FARM_SPAWN_CENTER + Vector3.new(
-					(col - 2) * SPAWN_SPACING,
-					0,
-					row * SPAWN_SPACING
-				)
-			)
+			points[idx] = CFrame.new(center + Vector3.new((col - 2) * SPAWN_SPACING, 0, row * SPAWN_SPACING))
 		end
 	end
 	return points
@@ -121,7 +130,8 @@ end
 
 -- ─── Teleport player to farm spawn point ─────────────────────────────────────
 
-local _spawnIndex = 0
+local _spawnIndex  = 0
+local _activeBiome = nil
 
 local function _teleportToFarm(player)
 	local character = player.Character
@@ -129,7 +139,7 @@ local function _teleportToFarm(player)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local points = _getFarmSpawnPoints()
+	local points = _getFarmSpawnPoints(_activeBiome)
 	_spawnIndex = (_spawnIndex % #points) + 1
 	hrp.CFrame = points[_spawnIndex]
 end
@@ -163,9 +173,10 @@ end
 
 local GameManager = require(ServerScriptService.GameManager)
 
-GameManager.onPhaseChanged(function(phase)
+GameManager.onPhaseChanged(function(phase, biome)
 	if phase == Constants.PHASES.FARMING then
-		_spawnIndex = 0
+		_activeBiome = biome
+		_spawnIndex  = 0
 		task.wait(0.5)  -- small grace period after phase change
 		for _, player in ipairs(Players:GetPlayers()) do
 			if player.Character then
