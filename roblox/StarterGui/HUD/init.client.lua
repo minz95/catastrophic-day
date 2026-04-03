@@ -310,18 +310,20 @@ end
 
 -- ─── Remote listeners ────────────────────────────────────────────────────────
 
+local _cachedBiome = nil
+
 RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
 	local Constants = require(ReplicatedStorage.Shared.Constants)
 	if phase == Constants.PHASES.RACING then
-		-- biome comes separately via BiomeSelected
-	elseif phase == Constants.PHASES.RESULTS then
+		_enableHUD(_cachedBiome)
+	elseif phase ~= Constants.PHASES.RACING then
 		_disableHUD()
 	end
 end)
 
 RemoteEvents.BiomeSelected.OnClientEvent:Connect(function(biome)
-	-- Will be called before racing starts; cache for when HUD enabled
-	_enableHUD(biome)
+	-- Cache biome; HUD only activates when RACING phase starts.
+	_cachedBiome = biome
 end)
 
 RemoteEvents.VehicleSpawned.OnClientEvent:Connect(function(userId, vehicleModel)
