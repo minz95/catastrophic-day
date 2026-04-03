@@ -27,7 +27,8 @@ Constants.RACING_TIMEOUT = 180 -- 3-minute failsafe
 -- ─── Player / Session ─────────────────────────────────────────────────────────
 Constants.MAX_PLAYERS    = 10
 Constants.SKIN_COUNT     = 10   -- must match ServerStorage/CharacterSkins count
-Constants.MIN_TO_START   = 2    -- minimum players before LOBBY ends
+Constants.MIN_TO_START   = 1    -- minimum players before LOBBY ends (1 = solo test OK)
+Constants.SOLO_TEST_MODE = true  -- set false in production; skips lobby wait
 
 -- ─── Inventory ────────────────────────────────────────────────────────────────
 Constants.INVENTORY_SIZE       = 8
