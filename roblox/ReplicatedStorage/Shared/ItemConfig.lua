@@ -3,9 +3,9 @@
 -- Stats are BASE values before rarity multiplier is applied.
 -- Resolves: Issue #6, #62, #67
 
--- Server-side entry point: re-exports the shared ReplicatedStorage version.
--- Keeps server requires working without path changes.
-return require(game.ReplicatedStorage.Shared.ItemConfig)
+-- Shared between server and client (lives in ReplicatedStorage/Shared).
+local Constants = require(script.Parent.Constants)
+local R = Constants.RARITY
 
 local ItemConfig = {}
 

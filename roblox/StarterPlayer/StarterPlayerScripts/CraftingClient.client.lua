@@ -12,9 +12,7 @@ local RunService        = game:GetService("RunService")
 local Constants    = require(ReplicatedStorage.Shared.Constants)
 local RemoteEvents = require(ReplicatedStorage.RemoteEvents)
 local ItemTypes    = require(ReplicatedStorage.Shared.ItemTypes)
-local ItemConfig   = require(game:GetService("ServerScriptService").Modules.ItemConfig)
--- Note: on client, ItemConfig must be in ReplicatedStorage for access.
--- During dev we mirror it. At runtime require from ReplicatedStorage.
+local ItemConfig   = require(ReplicatedStorage.Shared.ItemConfig)
 local VehicleStats = require(ReplicatedStorage.Shared.VehicleStats)
 
 local LocalPlayer  = Players.LocalPlayer
