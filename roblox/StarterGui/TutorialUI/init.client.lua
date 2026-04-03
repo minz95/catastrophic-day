@@ -27,9 +27,9 @@ local PHASE_GUIDES = {
 		title = "🌾  FARMING PHASE",
 		colour = Color3.fromRGB(80, 180, 60),
 		keys = {
-			{ key = "SPACE",        desc = "아이템 줍기 / 경쟁 연타" },
-			{ key = "SPACE (길게)", desc = "인벤토리 도둑질 시도 (0.9초)" },
-			{ key = "SPACE (빠르게×3)", desc = "도둑질 방어" },
+			{ key = "E",        desc = "아이템 줍기 / 경쟁 연타" },
+			{ key = "E (길게)", desc = "인벤토리 도둑질 시도 (0.9초)" },
+			{ key = "E (빠르게×3)", desc = "도둑질 방어" },
 			{ key = "Q (길게)",     desc = "이모트 메뉴 열기" },
 		},
 		tip = "아이콘과 이름이 표시된 아이템을 수집하세요!\n희귀도: 회색(Common) < 초록(Uncommon) < 파랑(Rare) < 보라(Epic)",
