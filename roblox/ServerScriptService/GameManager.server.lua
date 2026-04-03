@@ -56,7 +56,16 @@ end
 
 local function _startLobby()
 	_transition(Constants.PHASES.LOBBY)
-	-- Wait for minimum players or a hard timeout (30s)
+
+	if Constants.SOLO_TEST_MODE then
+		-- In test mode: start immediately once at least 1 player is in
+		repeat task.wait(0.5) until #Players:GetPlayers() >= 1
+		task.wait(2)   -- brief 2s so LobbyUI is visible
+		_startFarming()
+		return
+	end
+
+	-- Production: wait for MIN_TO_START or 30s timeout
 	local waited = 0
 	repeat
 		task.wait(1)

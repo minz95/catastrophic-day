@@ -379,7 +379,7 @@ local function _setupFinishLine()
 					player.Name, #_finishOrder, elapsed))
 
 				-- All racers done?
-				if #_finishOrder >= _totalRacers then
+				if #_finishOrder >= math.max(1, _totalRacers) then
 					_active = false
 					GameManager.raceComplete(_finishOrder)
 				end
