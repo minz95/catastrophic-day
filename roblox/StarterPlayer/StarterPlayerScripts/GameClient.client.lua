@@ -30,61 +30,72 @@ local CameraController = safeRequire(Scripts:WaitForChild("Modules", 5)
 -- ─── Phase routing table ──────────────────────────────────────────────────────
 
 local phaseHandlers = {
-	[Constants.PHASES.LOBBY] = function()
-		if UIManager       then UIManager.showOnly("LobbyUI")     end
-		if FarmingClient   then FarmingClient.disable()           end
-		if CraftingClient  then CraftingClient.disable()          end
-		if RacingClient    then RacingClient.disable()            end
-		if CameraController then CameraController.setMode("lobby") end
+	[Constants.PHASES.LOBBY] = function(biome)
+		if UIManager        then UIManager.setPhase("LOBBY", biome)     end
+		if FarmingClient    then FarmingClient.disable()                 end
+		if CraftingClient   then CraftingClient.disable()               end
+		if RacingClient     then RacingClient.disable()                 end
+		if CameraController then CameraController.setMode("default")    end
 	end,
 
-	[Constants.PHASES.FARMING] = function()
-		if UIManager       then UIManager.showOnly("FarmingUI")   end
-		if FarmingClient   then FarmingClient.enable()            end
-		if CraftingClient  then CraftingClient.disable()          end
-		if RacingClient    then RacingClient.disable()            end
-		if CameraController then CameraController.setMode("farming") end
+	[Constants.PHASES.FARMING] = function(biome)
+		if UIManager        then UIManager.setPhase("FARMING", biome)   end
+		if FarmingClient    then FarmingClient.enable()                  end
+		if CraftingClient   then CraftingClient.disable()               end
+		if RacingClient     then RacingClient.disable()                 end
+		if CameraController then CameraController.setMode("farming")    end
 	end,
 
-	[Constants.PHASES.CRAFTING] = function()
-		if UIManager       then UIManager.showOnly("CraftingUI")  end
-		if FarmingClient   then FarmingClient.disable()           end
-		if CraftingClient  then CraftingClient.enable()           end
-		if RacingClient    then RacingClient.disable()            end
-		if CameraController then CameraController.setMode("crafting") end
+	[Constants.PHASES.CRAFTING] = function(biome)
+		if UIManager        then UIManager.setPhase("CRAFTING", biome)  end
+		if FarmingClient    then FarmingClient.disable()                 end
+		if CraftingClient   then CraftingClient.enable()                end
+		if RacingClient     then RacingClient.disable()                 end
+		if CameraController then CameraController.setMode("crafting")   end
 	end,
 
-	[Constants.PHASES.RACING] = function()
-		if UIManager       then UIManager.showOnly("HUD", "AbilityUI") end
-		if FarmingClient   then FarmingClient.disable()           end
-		if CraftingClient  then CraftingClient.disable()          end
-		if RacingClient    then RacingClient.enable()             end
-		if CameraController then CameraController.setMode("racing") end
+	[Constants.PHASES.RACING] = function(biome)
+		if UIManager        then UIManager.setPhase("RACING", biome)    end
+		if FarmingClient    then FarmingClient.disable()                 end
+		if CraftingClient   then CraftingClient.disable()               end
+		if RacingClient     then RacingClient.enable()                  end
+		-- Camera mode set to "racing" after vehicle spawns (see VehicleSpawned below)
 	end,
 
-	[Constants.PHASES.RESULTS] = function()
-		if UIManager       then UIManager.showOnly("ResultsUI")   end
-		if RacingClient    then RacingClient.disable()            end
-		if CameraController then CameraController.setMode("results") end
+	[Constants.PHASES.RESULTS] = function(biome)
+		if UIManager        then UIManager.setPhase("RESULTS", biome)   end
+		if RacingClient     then RacingClient.disable()                 end
+		if CameraController then CameraController.setMode("results")    end
 	end,
 }
 
 -- ─── Wire up ──────────────────────────────────────────────────────────────────
 
+local _currentBiome = nil
+
 RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
 	local handler = phaseHandlers[phase]
 	if handler then
-		handler()
+		handler(_currentBiome)
 	else
 		warn("[GameClient] Unknown phase:", phase)
 	end
 end)
 
 RemoteEvents.BiomeSelected.OnClientEvent:Connect(function(biome)
+	_currentBiome = biome
 	if UIManager then UIManager.applyBiomeTheme(biome) end
+end)
+
+-- When vehicle spawns during RACING, hand it to CameraController
+RemoteEvents.VehicleSpawned.OnClientEvent:Connect(function(userId, vehicleModel)
+	if userId ~= LocalPlayer.UserId then return end
+	if CameraController then
+		CameraController.setMode("racing", vehicleModel)
+	end
 end)
 
 -- ─── Boot into LOBBY by default ───────────────────────────────────────────────
 
 local handler = phaseHandlers[Constants.PHASES.LOBBY]
-if handler then handler() end
+if handler then handler(nil) end
