@@ -112,7 +112,7 @@ local function _showPrompt(part)
 	local label = Instance.new("TextLabel")
 	label.Size            = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
-	label.Text            = "[SPACE] Pick Up"
+	label.Text            = "[E] Pick Up"
 	label.TextColor3      = Color3.new(1, 1, 1)
 	label.TextScaled      = true
 	label.Font            = Enum.Font.GothamBold
@@ -138,12 +138,12 @@ local function _flashPromptDenied()
 	end)
 end
 
--- ─── SPACE handler ────────────────────────────────────────────────────────────
+-- ─── E handler ────────────────────────────────────────────────────────────
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or not _enabled then return end
 
-	if input.KeyCode == Enum.KeyCode.Space then
+	if input.KeyCode == Enum.KeyCode.E then
 		if _contestItemId then
 			-- We're in a contest — count presses
 			_contestPresses = _contestPresses + 1
@@ -168,21 +168,21 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
--- Long-press SPACE for steal (hold ~1s near another player)
-local _spaceHoldStart = nil
+-- Long-press E for steal (hold ~0.9s near another player)
+local _eHoldStart = nil
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or not _enabled then return end
-	if input.KeyCode == Enum.KeyCode.Space and _nearestPlayer and not _nearestItem then
-		_spaceHoldStart = tick()
+	if input.KeyCode == Enum.KeyCode.E and _nearestPlayer and not _nearestItem then
+		_eHoldStart = tick()
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.Space then
-		if _spaceHoldStart and (tick() - _spaceHoldStart) >= 0.9 and _nearestPlayer then
+	if input.KeyCode == Enum.KeyCode.E then
+		if _eHoldStart and (tick() - _eHoldStart) >= 0.9 and _nearestPlayer then
 			RemoteEvents.RequestSteal:InvokeServer(_nearestPlayer.UserId)
 		end
-		_spaceHoldStart = nil
+		_eHoldStart = nil
 	end
 end)
 
@@ -211,14 +211,14 @@ end)
 
 RemoteEvents.StealAttempt.OnClientEvent:Connect(function(thiefName)
 	-- Show defend UI
-	print(string.format("[Steal] %s is trying to steal from you! Press SPACE x3!", thiefName))
+	print(string.format("[Steal] %s is trying to steal from you! Press E x3!", thiefName))
 	-- TODO: proper ScreenGui overlay (Issue #44 / #64 UI)
 	local defendPresses = 0
 	local defended = false
 	local conn
 	conn = UserInputService.InputBegan:Connect(function(input, processed)
 		if processed then return end
-		if input.KeyCode == Enum.KeyCode.Space then
+		if input.KeyCode == Enum.KeyCode.E then
 			defendPresses = defendPresses + 1
 			if defendPresses >= Constants.STEAL_DEFEND_PRESSES then
 				defended = true
