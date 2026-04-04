@@ -59,26 +59,51 @@ local function _spawnItems(biome)
 		return
 	end
 
-	-- Scatter items in FarmArea sub-model if present; otherwise fixed farm zone.
-	-- Using full map bounding box caused items to spawn on the race track.
-	local farmModel = mapModel:FindFirstChild("FarmArea")
-	local cf, size = mapModel:GetBoundingBox()
+	-- Derive farm area bounds from FarmSpawnPoint parts inside this biome's map.
+	-- Each MapBuilder places tagged FarmSpawnPoint Parts at the correct position
+	-- and height for their biome — using them avoids hardcoded coordinates that
+	-- break for SKY (floating platforms) and OCEAN (elevated dock/island).
 	local spawnCX, spawnCZ, halfX, halfZ, baseY
 
-	if farmModel then
-		local fcf, fsize = farmModel:GetBoundingBox()
-		spawnCX = fcf.Position.X
-		spawnCZ = fcf.Position.Z
-		halfX   = math.min(fsize.X * 0.45, 80)
-		halfZ   = math.min(fsize.Z * 0.45, 150)
-		baseY   = fcf.Position.Y + 2
-	else
-		-- Fallback hardcoded farm zone (Z = 200 to 500, centre of FOREST farm)
-		spawnCX = cf.Position.X
-		spawnCZ = 350
-		halfX   = 80
-		halfZ   = 140
-		baseY   = cf.Position.Y + 2
+	do
+		local spawnParts = {}
+		for _, part in ipairs(mapModel:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name == "FarmSpawnPoint" then
+				table.insert(spawnParts, part)
+			end
+		end
+
+		if #spawnParts > 0 then
+			local sumX, sumY, sumZ = 0, 0, 0
+			local minX, maxX = math.huge, -math.huge
+			local minZ, maxZ = math.huge, -math.huge
+			for _, sp in ipairs(spawnParts) do
+				local p = sp.Position
+				sumX = sumX + p.X
+				sumY = sumY + p.Y
+				sumZ = sumZ + p.Z
+				minX = math.min(minX, p.X)
+				maxX = math.max(maxX, p.X)
+				minZ = math.min(minZ, p.Z)
+				maxZ = math.max(maxZ, p.Z)
+			end
+			local n = #spawnParts
+			spawnCX = sumX / n
+			spawnCZ = sumZ / n
+			baseY   = (sumY / n) + 2   -- 2 studs above spawn pad surface
+			-- Extend the scatter area 30/60 studs past the outer spawn pads
+			halfX   = math.min((maxX - minX) * 0.5 + 30, 90)
+			halfZ   = math.min((maxZ - minZ) * 0.5 + 60, 160)
+		else
+			-- Last-resort fallback (shouldn't happen if MapBuilder ran)
+			warn("[FarmingManager] No FarmSpawnPoint found for biome:", biome)
+			local cf = mapModel:GetBoundingBox()
+			spawnCX = cf.Position.X
+			spawnCZ = cf.Position.Z
+			halfX   = 80
+			halfZ   = 140
+			baseY   = cf.Position.Y + 2
+		end
 	end
 
 	local usedPositions = {}
