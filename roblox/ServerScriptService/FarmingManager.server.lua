@@ -27,6 +27,7 @@ local _items      = {}   -- { [itemId] = { part, itemName, rarity, taken=false }
 local _contests   = {}   -- { [itemId] = { players={}, presses={}, endTick } }
 local _phaseTimer = nil
 local _active     = false
+local _itemCounter = 0   -- monotonic ID so every spawned part gets a unique key
 
 -- ─── Weighted spawn pool ──────────────────────────────────────────────────────
 
@@ -220,8 +221,16 @@ local function _spawnItems(biome)
 		nameLbl.TextStrokeTransparency = 0.4
 		nameLbl.Parent        = billboard
 
-		-- Register: use primary part as the "part" reference for pickup detection
-		local itemId = tostring(primary)
+		-- Unique ID per item so _items keys never collide regardless of part name.
+		-- tostring(part) returns the part's Name which is identical for all items
+		-- built by the same builder (e.g. every barrel's primary is named "Body").
+		_itemCounter = _itemCounter + 1
+		local itemId = tostring(_itemCounter)
+		local idVal = Instance.new("StringValue")
+		idVal.Name   = "ItemId"
+		idVal.Value  = itemId
+		idVal.Parent = primary
+
 		_items[itemId] = {
 			part     = primary,
 			model    = model,

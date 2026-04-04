@@ -158,6 +158,17 @@ submitBtn.TextColor3        = Color3.new(1, 1, 1)
 submitBtn.Parent            = panel
 local _btc = Instance.new("UICorner"); _btc.CornerRadius = UDim.new(0, 10); _btc.Parent = submitBtn
 
+local emptyNote = Instance.new("TextLabel")
+emptyNote.Size              = UDim2.new(1, -20, 0, 20)
+emptyNote.Position          = UDim2.new(0, 10, 1, -42)
+emptyNote.BackgroundTransparency = 1
+emptyNote.Text              = "아이템 없음 → 기본 고물 vehicle 지급"
+emptyNote.Font              = Enum.Font.Gotham
+emptyNote.TextScaled        = true
+emptyNote.TextColor3        = Color3.fromRGB(180, 120, 60)
+emptyNote.Visible           = false
+emptyNote.Parent            = panel
+
 -- ─── State ────────────────────────────────────────────────────────────────────
 
 local _submitted       = false
@@ -184,6 +195,7 @@ local function _buildSlotAssignments(inventory)
 end
 
 local function _refreshDisplay()
+	emptyNote.Visible = (#_currentInventory == 0)
 	-- Inventory row
 	for _, child in ipairs(invFrame:GetChildren()) do
 		if not child:IsA("UIListLayout") then child:Destroy() end
