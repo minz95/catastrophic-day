@@ -58,9 +58,11 @@ local function _startLobby()
 	_transition(Constants.PHASES.LOBBY)
 
 	if Constants.SOLO_TEST_MODE then
-		-- In test mode: start immediately once at least 1 player is in
+		-- In test mode: start immediately once at least 1 player is in.
+		-- Wait 5s (up from 2s) so the client's character has time to load and
+		-- StarterGui scripts can connect their PhaseChanged listeners before we fire.
 		repeat task.wait(0.5) until #Players:GetPlayers() >= 1
-		task.wait(2)   -- brief 2s so LobbyUI is visible
+		task.wait(5)
 		_startFarming()
 		return
 	end
