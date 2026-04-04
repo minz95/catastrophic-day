@@ -135,18 +135,19 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Build item model. Wrapped in pcall so a bad builder never aborts the loop.
+		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural)
+		local itemModels = ServerStorage:FindFirstChild("ItemModels")
+		local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
 		local model
-		local buildOk, buildErr = pcall(function()
+		if prebuilt then
+			model        = prebuilt:Clone()
+			model.Parent = mapModel
+		else
+			-- Fallback: build procedurally (shouldn't happen if Preloader ran)
 			model = ItemModelBuilder.build(entry.name, mapModel)
-		end)
-		if not buildOk then
-			warn("[FarmingManager] Build error for '" .. entry.name .. "': " .. tostring(buildErr))
-			continue
 		end
 		local primary = model and model.PrimaryPart
 		if not primary then
-			warn("[FarmingManager] No PrimaryPart for '" .. entry.name .. "'")
 			if model then model:Destroy() end
 			continue
 		end
