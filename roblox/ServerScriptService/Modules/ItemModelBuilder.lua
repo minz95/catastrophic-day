@@ -1,8 +1,9 @@
 -- ItemModelBuilder.lua
--- Builds 3D Part-based models for all 37 items.
--- Each item is a Model with a PrimaryPart and named sub-parts.
--- Materials use Roblox built-in textures — no external asset IDs needed.
--- Resolves: Issue #24 #25 #26
+-- Builds 3D models for all items.
+-- Priority: MeshPart (from Blender FBX asset ID in MeshAssetIds) → procedural Part fallback.
+-- To activate a Blender model: import the FBX in Roblox Studio and paste the asset ID
+-- into ReplicatedStorage/Shared/MeshAssetIds.lua for that item name.
+-- Resolves: Issue #24 #25 #26 #93
 
 local ItemModelBuilder = {}
 
@@ -1141,7 +1142,8 @@ local BUILDERS = {
 
 -- ─── Public API ───────────────────────────────────────────────────────────────
 
--- Build a Model for the given item name.
+-- Build a Model for the given item name using the procedural Part system.
+-- Called by ItemModelPreloader only for items without a Blender mesh in ItemMeshes.
 -- Returns a Model with PrimaryPart set, parented to `parent`.
 function ItemModelBuilder.build(itemName, parent)
 	local builder = BUILDERS[itemName]
