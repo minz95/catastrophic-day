@@ -10,8 +10,8 @@ local Constants    = require(ReplicatedStorage.Shared.Constants)
 local ItemConfig   = require(ReplicatedStorage.Shared.ItemConfig)
 local VehicleStats = require(ReplicatedStorage.Shared.VehicleStats)
 
--- Only run in test mode
-if not Constants.SOLO_TEST_MODE then return end
+-- Disabled: too noisy during active debugging. Re-enable manually when needed.
+return
 
 -- ─── Collect items by slot ────────────────────────────────────────────────────
 
