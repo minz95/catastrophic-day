@@ -371,14 +371,18 @@ end
 
 local function buildOcean()
 	local root = _getOrCreateMap()
-	_buildWater(root)
-	_buildFarmIsland(root)
-	_buildBuoyancyZones(root)
-	_buildCourseBuoys(root)
-	_buildTurnMarkers(root)
-	_buildBoostPads(root)
-	_buildStartGrid(root)
-	_buildFinishLine(root)
+
+	local farmSub  = Instance.new("Model"); farmSub.Name  = "FarmArea";  farmSub.Parent  = root
+	local trackSub = Instance.new("Model"); trackSub.Name = "RaceTrack"; trackSub.Parent = root
+
+	_buildWater(root)           -- shared
+	_buildBuoyancyZones(root)   -- shared (buoyancy needed in both phases)
+	_buildFarmIsland(farmSub)
+	_buildCourseBuoys(trackSub)
+	_buildTurnMarkers(trackSub)
+	_buildBoostPads(trackSub)
+	_buildStartGrid(trackSub)
+	_buildFinishLine(trackSub)
 
 	CollectionService:AddTag(root, "BiomeMap")
 	root:SetAttribute("Biome", "OCEAN")

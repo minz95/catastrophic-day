@@ -484,17 +484,21 @@ end
 function MapBuilders.buildForest()
 	local root = _getOrCreateMap()
 
-	_buildGround(root)
-	_buildFarmArea(root)
-	_buildTrack(root)
-	_buildMudZones(root)
-	_buildDriftCorners(root)
-	_buildJumpRamps(root)
-	_buildBoostPads(root)
-	_buildObstacles(root)
-	_buildTrees(root)
-	_buildFinishLine(root)
-	_buildStartGrid(root)
+	-- Sub-models so MapManager can toggle farm vs track visibility per phase
+	local farmSub  = Instance.new("Model"); farmSub.Name  = "FarmArea";  farmSub.Parent  = root
+	local trackSub = Instance.new("Model"); trackSub.Name = "RaceTrack"; trackSub.Parent = root
+
+	_buildGround(root)           -- shared ground plane
+	_buildTrees(root)            -- shared decoration
+	_buildFarmArea(farmSub)
+	_buildTrack(trackSub)
+	_buildMudZones(trackSub)
+	_buildDriftCorners(trackSub)
+	_buildJumpRamps(trackSub)
+	_buildBoostPads(trackSub)
+	_buildObstacles(trackSub)
+	_buildFinishLine(trackSub)
+	_buildStartGrid(trackSub)
 
 	-- Tag the whole model
 	CollectionService:AddTag(root, "BiomeMap")

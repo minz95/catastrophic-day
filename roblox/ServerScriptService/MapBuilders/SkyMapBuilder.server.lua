@@ -324,13 +324,17 @@ end
 
 local function buildSky()
 	local root = _getOrCreateMap()
-	_buildClouds(root)
-	_buildFarmPlatform(root)
-	_buildTrackPlatforms(root)
-	_buildUpdraftZones(root)
-	_buildObstacles(root)
-	_buildBoostPads(root)
-	_buildFinishLine(root)
+
+	local farmSub  = Instance.new("Model"); farmSub.Name  = "FarmArea";  farmSub.Parent  = root
+	local trackSub = Instance.new("Model"); trackSub.Name = "RaceTrack"; trackSub.Parent = root
+
+	_buildClouds(root)             -- shared decoration
+	_buildUpdraftZones(root)       -- shared (physics zones needed in both phases)
+	_buildFarmPlatform(farmSub)
+	_buildTrackPlatforms(trackSub)
+	_buildObstacles(trackSub)
+	_buildBoostPads(trackSub)
+	_buildFinishLine(trackSub)
 
 	CollectionService:AddTag(root, "BiomeMap")
 	root:SetAttribute("Biome", "SKY")
