@@ -153,7 +153,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 
 		if _nearestItem then
-			local result = RemoteEvents.RequestPickup:InvokeServer(tostring(_nearestItem))
+			local idVal  = _nearestItem:FindFirstChild("ItemId")
+			local itemId = idVal and idVal.Value
+			if not itemId then return end
+			local result = RemoteEvents.RequestPickup:InvokeServer(itemId)
 			if result == "ok" then
 				_hidePrompt()
 				_nearestItem = nil

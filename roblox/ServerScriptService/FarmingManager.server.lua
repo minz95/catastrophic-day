@@ -2,6 +2,8 @@
 -- Item spawning, pickup authority, contest system, and inventory stealing.
 -- Resolves: Issue #16, #17, #19, #36, #39, #64
 
+print("[FarmingManager] Script started loading")
+
 local Players             = game:GetService("Players")
 local RunService          = game:GetService("RunService")
 local CollectionService   = game:GetService("CollectionService")
@@ -17,12 +19,15 @@ local SessionManager = require(ServerScriptService.SessionManager)
 local ItemModelBuilder  = require(ServerScriptService.Modules.ItemModelBuilder)
 local ItemVisualUpgrader = require(ServerScriptService.Modules.ItemVisualUpgrader)
 
+print("[FarmingManager] All requires succeeded")
+
 -- ─── State ────────────────────────────────────────────────────────────────────
 
 local _items      = {}   -- { [itemId] = { part, itemName, rarity, taken=false } }
 local _contests   = {}   -- { [itemId] = { players={}, presses={}, endTick } }
 local _phaseTimer = nil
 local _active     = false
+local _itemCounter = 0   -- monotonic ID so every spawned part gets a unique key
 
 -- ─── Weighted spawn pool ──────────────────────────────────────────────────────
 
@@ -31,6 +36,7 @@ local function _buildSpawnPool()
 	for rarity, names in pairs(ItemConfig._byRarity) do
 		local count = Constants.RARITY_SPAWN_DIST[rarity] or 0
 		for _ = 1, count do
+			if #names == 0 then continue end
 			local name = names[math.random(#names)]
 			table.insert(pool, { name = name, rarity = rarity })
 		end
@@ -47,36 +53,65 @@ end
 
 local function _spawnItems(biome)
 	_items = {}
+	print(string.format("[FarmingManager] _spawnItems called, biome=%s", tostring(biome)))
 	local pool = _buildSpawnPool()
+	print(string.format("[FarmingManager] Pool size: %d", #pool))
 	local mapCfg = require(ServerScriptService.Modules.BiomeConfig).get(biome)
+	-- Biome is uppercase (e.g. "FOREST"); map is TitleCase + "Map" (e.g. "ForestMap")
+	local biomeTitleCase = biome:sub(1, 1):upper() .. biome:sub(2):lower()
 	local mapModel = game.Workspace:FindFirstChild("Maps")
-		and game.Workspace.Maps:FindFirstChild(biome .. "Map")
+		and game.Workspace.Maps:FindFirstChild(biomeTitleCase .. "Map")
 
 	if not mapModel then
 		warn("[FarmingManager] Map not found for biome:", biome)
 		return
 	end
 
-	-- Scatter items in FarmArea sub-model if present; otherwise fixed farm zone.
-	-- Using full map bounding box caused items to spawn on the race track.
-	local farmModel = mapModel:FindFirstChild("FarmArea")
-	local cf, size = mapModel:GetBoundingBox()
+	-- Derive farm area bounds from FarmSpawnPoint parts inside this biome's map.
+	-- Each MapBuilder places tagged FarmSpawnPoint Parts at the correct position
+	-- and height for their biome — using them avoids hardcoded coordinates that
+	-- break for SKY (floating platforms) and OCEAN (elevated dock/island).
 	local spawnCX, spawnCZ, halfX, halfZ, baseY
 
-	if farmModel then
-		local fcf, fsize = farmModel:GetBoundingBox()
-		spawnCX = fcf.Position.X
-		spawnCZ = fcf.Position.Z
-		halfX   = math.min(fsize.X * 0.45, 80)
-		halfZ   = math.min(fsize.Z * 0.45, 150)
-		baseY   = fcf.Position.Y + 2
-	else
-		-- Fallback hardcoded farm zone (Z = 200 to 500, centre of FOREST farm)
-		spawnCX = cf.Position.X
-		spawnCZ = 350
-		halfX   = 80
-		halfZ   = 140
-		baseY   = cf.Position.Y + 2
+	do
+		local spawnParts = {}
+		for _, part in ipairs(mapModel:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name == "FarmSpawnPoint" then
+				table.insert(spawnParts, part)
+			end
+		end
+
+		if #spawnParts > 0 then
+			local sumX, sumY, sumZ = 0, 0, 0
+			local minX, maxX = math.huge, -math.huge
+			local minZ, maxZ = math.huge, -math.huge
+			for _, sp in ipairs(spawnParts) do
+				local p = sp.Position
+				sumX = sumX + p.X
+				sumY = sumY + p.Y
+				sumZ = sumZ + p.Z
+				minX = math.min(minX, p.X)
+				maxX = math.max(maxX, p.X)
+				minZ = math.min(minZ, p.Z)
+				maxZ = math.max(maxZ, p.Z)
+			end
+			local n = #spawnParts
+			spawnCX = sumX / n
+			spawnCZ = sumZ / n
+			baseY   = (sumY / n) + 2   -- 2 studs above spawn pad surface
+			-- Extend the scatter area 30/60 studs past the outer spawn pads
+			halfX   = math.min((maxX - minX) * 0.5 + 30, 90)
+			halfZ   = math.min((maxZ - minZ) * 0.5 + 60, 160)
+		else
+			-- Last-resort fallback (shouldn't happen if MapBuilder ran)
+			warn("[FarmingManager] No FarmSpawnPoint found for biome:", biome)
+			local cf = mapModel:GetBoundingBox()
+			spawnCX = cf.Position.X
+			spawnCZ = cf.Position.Z
+			halfX   = 80
+			halfZ   = 140
+			baseY   = cf.Position.Y + 2
+		end
 	end
 
 	local usedPositions = {}
@@ -112,11 +147,19 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Build 3D model from ItemModelBuilder
-		local model = ItemModelBuilder.build(entry.name, mapModel)
-		local primary = model.PrimaryPart
+		-- Build item model. Wrapped in pcall so a bad builder never aborts the loop.
+		local model
+		local buildOk, buildErr = pcall(function()
+			model = ItemModelBuilder.build(entry.name, mapModel)
+		end)
+		if not buildOk then
+			warn("[FarmingManager] Build error for '" .. entry.name .. "': " .. tostring(buildErr))
+			continue
+		end
+		local primary = model and model.PrimaryPart
 		if not primary then
-			model:Destroy()
+			warn("[FarmingManager] No PrimaryPart for '" .. entry.name .. "'")
+			if model then model:Destroy() end
 			continue
 		end
 
@@ -137,7 +180,12 @@ local function _spawnItems(biome)
 		rarityVal.Parent = primary
 
 		-- Rarity visuals + idle float/rotate
-		ItemVisualUpgrader.apply(model, entry.rarity)
+		local visualOk, visualErr = pcall(function()
+			ItemVisualUpgrader.apply(model, entry.rarity)
+		end)
+		if not visualOk then
+			warn("[FarmingManager] VisualUpgrader error for '" .. entry.name .. "': " .. tostring(visualErr))
+		end
 
 		-- Billboard label above item (always visible)
 		local billboard = Instance.new("BillboardGui")
@@ -173,8 +221,16 @@ local function _spawnItems(biome)
 		nameLbl.TextStrokeTransparency = 0.4
 		nameLbl.Parent        = billboard
 
-		-- Register: use primary part as the "part" reference for pickup detection
-		local itemId = tostring(primary)
+		-- Unique ID per item so _items keys never collide regardless of part name.
+		-- tostring(part) returns the part's Name which is identical for all items
+		-- built by the same builder (e.g. every barrel's primary is named "Body").
+		_itemCounter = _itemCounter + 1
+		local itemId = tostring(_itemCounter)
+		local idVal = Instance.new("StringValue")
+		idVal.Name   = "ItemId"
+		idVal.Value  = itemId
+		idVal.Parent = primary
+
 		_items[itemId] = {
 			part     = primary,
 			model    = model,
@@ -377,7 +433,9 @@ end
 
 _farmingStartTick = 0
 
+print("[FarmingManager] Registering onPhaseChanged callback")
 GameManager.onPhaseChanged(function(phase, biome)
+	print(string.format("[FarmingManager] onPhaseChanged fired: phase=%s biome=%s", tostring(phase), tostring(biome)))
 	if phase == Constants.PHASES.FARMING then
 		_active = true
 		_farmingStartTick = tick()

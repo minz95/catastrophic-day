@@ -11,18 +11,20 @@
 
 local ServerStorage       = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
-local ItemTypes           = require(game.ReplicatedStorage.Shared.ItemTypes)
-local ItemModelBuilder    = require(ServerScriptService.Modules.ItemModelBuilder)
 
--- ItemMeshes: optional folder populated with Blender-imported Models
-local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes")
-
--- Recreate ItemModels folder
+-- Recreate ItemModels folder first — even if requires below fail,
+-- the folder existence tells FarmingManager the preloader ran.
 local folder = ServerStorage:FindFirstChild("ItemModels")
 if folder then folder:Destroy() end
 folder = Instance.new("Folder")
 folder.Name   = "ItemModels"
 folder.Parent = ServerStorage
+
+local ItemTypes        = require(game.ReplicatedStorage.Shared.ItemTypes)
+local ItemModelBuilder = require(ServerScriptService.Modules.ItemModelBuilder)
+
+-- ItemMeshes: optional folder populated with Blender-imported Models
+local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes")
 
 local blenderCount    = 0
 local proceduralCount = 0
@@ -35,7 +37,47 @@ for _, item in ipairs(ItemTypes.ALL) do
 		local mesh = meshesFolder:FindFirstChild(name)
 		if mesh then
 			local clone = mesh:Clone()
-			clone.Name   = name
+			clone.Name = name
+
+			-- Ensure PrimaryPart is set (pick largest BasePart by volume if missing)
+			if not clone.PrimaryPart then
+				local bestVol, bestPart = 0, nil
+				for _, part in ipairs(clone:GetDescendants()) do
+					if part:IsA("BasePart") then
+						local vol = part.Size.X * part.Size.Y * part.Size.Z
+						if vol > bestVol then
+							bestVol  = vol
+							bestPart = part
+						end
+					end
+				end
+				if bestPart then
+					clone.PrimaryPart = bestPart
+				end
+			end
+
+			-- Weld all other BaseParts to PrimaryPart so parts stay together
+			local primary = clone.PrimaryPart
+			if primary then
+				for _, part in ipairs(clone:GetDescendants()) do
+					if part:IsA("BasePart") and part ~= primary then
+						local alreadyWelded = false
+						for _, child in ipairs(part:GetChildren()) do
+							if child:IsA("WeldConstraint") then
+								alreadyWelded = true
+								break
+							end
+						end
+						if not alreadyWelded then
+							local weld  = Instance.new("WeldConstraint")
+							weld.Part0  = primary
+							weld.Part1  = part
+							weld.Parent = primary
+						end
+					end
+				end
+			end
+
 			clone.Parent = folder
 			blenderCount = blenderCount + 1
 			continue

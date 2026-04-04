@@ -12,6 +12,8 @@ local VehicleStats = require(ReplicatedStorage.Shared.VehicleStats)
 
 -- Only run in test mode
 if not Constants.SOLO_TEST_MODE then return end
+-- Disabled: too noisy during active debugging; remove the line below to re-enable.
+do return end
 
 -- ─── Collect items by slot ────────────────────────────────────────────────────
 
