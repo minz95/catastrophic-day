@@ -112,11 +112,20 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Build 3D model from ItemModelBuilder
-		local model = ItemModelBuilder.build(entry.name, mapModel)
-		local primary = model.PrimaryPart
+		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural)
+		local itemModels = ServerStorage:FindFirstChild("ItemModels")
+		local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
+		local model
+		if prebuilt then
+			model        = prebuilt:Clone()
+			model.Parent = mapModel
+		else
+			-- Fallback: build procedurally (shouldn't happen if Preloader ran)
+			model = ItemModelBuilder.build(entry.name, mapModel)
+		end
+		local primary = model and model.PrimaryPart
 		if not primary then
-			model:Destroy()
+			if model then model:Destroy() end
 			continue
 		end
 
