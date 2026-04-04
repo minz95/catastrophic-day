@@ -49,8 +49,10 @@ local function _spawnItems(biome)
 	_items = {}
 	local pool = _buildSpawnPool()
 	local mapCfg = require(ServerScriptService.Modules.BiomeConfig).get(biome)
+	-- Biome is uppercase (e.g. "FOREST"); map is TitleCase + "Map" (e.g. "ForestMap")
+	local biomeTitleCase = biome:sub(1, 1):upper() .. biome:sub(2):lower()
 	local mapModel = game.Workspace:FindFirstChild("Maps")
-		and game.Workspace.Maps:FindFirstChild(biome .. "Map")
+		and game.Workspace.Maps:FindFirstChild(biomeTitleCase .. "Map")
 
 	if not mapModel then
 		warn("[FarmingManager] Map not found for biome:", biome)
