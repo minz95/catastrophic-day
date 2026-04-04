@@ -2,6 +2,8 @@
 -- Item spawning, pickup authority, contest system, and inventory stealing.
 -- Resolves: Issue #16, #17, #19, #36, #39, #64
 
+print("[FarmingManager] Script started loading")
+
 local Players             = game:GetService("Players")
 local RunService          = game:GetService("RunService")
 local CollectionService   = game:GetService("CollectionService")
@@ -16,6 +18,8 @@ local GameManager    = require(ServerScriptService.GameManager)
 local SessionManager = require(ServerScriptService.SessionManager)
 local ItemModelBuilder  = require(ServerScriptService.Modules.ItemModelBuilder)
 local ItemVisualUpgrader = require(ServerScriptService.Modules.ItemVisualUpgrader)
+
+print("[FarmingManager] All requires succeeded")
 
 -- ─── State ────────────────────────────────────────────────────────────────────
 
@@ -420,7 +424,9 @@ end
 
 _farmingStartTick = 0
 
+print("[FarmingManager] Registering onPhaseChanged callback")
 GameManager.onPhaseChanged(function(phase, biome)
+	print(string.format("[FarmingManager] onPhaseChanged fired: phase=%s biome=%s", tostring(phase), tostring(biome)))
 	if phase == Constants.PHASES.FARMING then
 		_active = true
 		_farmingStartTick = tick()

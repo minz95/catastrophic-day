@@ -90,7 +90,7 @@ function _startFarming()
 end
 
 function _startCrafting()
-	if _phaseTimer then task.cancel(_phaseTimer) end
+	if _phaseTimer then pcall(task.cancel, _phaseTimer) end
 	_transition(Constants.PHASES.CRAFTING)
 
 	_phaseTimer = task.delay(Constants.PHASE_DURATION.CRAFTING, function()
@@ -99,7 +99,7 @@ function _startCrafting()
 end
 
 function _startRacing()
-	if _phaseTimer then task.cancel(_phaseTimer) end
+	if _phaseTimer then pcall(task.cancel, _phaseTimer) end
 	_transition(Constants.PHASES.RACING)
 
 	-- Failsafe timeout
@@ -109,7 +109,7 @@ function _startRacing()
 end
 
 function _startResults(finishOrder)
-	if _phaseTimer then task.cancel(_phaseTimer) end
+	if _phaseTimer then pcall(task.cancel, _phaseTimer) end
 	_transition(Constants.PHASES.RESULTS)
 	RemoteEvents.RaceFinished:FireAllClients(finishOrder)
 
