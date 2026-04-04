@@ -549,10 +549,11 @@ local function _buildTrees(root)
 			Material = MAT.WOOD,
 			CanCollide = false,
 		})
-		-- 3-layer cone canopy
+		-- 3-layer cone canopy stacked at the UPPER portion of the trunk.
+		-- Layer 0 (largest, bottom) at 65%, layer 1 at 80%, layer 2 (smallest, tip) at 95%.
 		for layer = 0, 2 do
 			local layerR = (3 - layer) * 2.5
-			local layerY = h * 0.45 + layer * h * 0.18
+			local layerY = h * (0.65 + layer * 0.15)  -- 65%, 80%, 95% of trunk height
 			_part(parent, {
 				Name     = "PineLeaf",
 				Size     = Vector3.new(layerR * 2, layerR * 0.9, layerR * 2),
