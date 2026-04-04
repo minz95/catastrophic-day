@@ -18,19 +18,26 @@ local Constants        = require(ReplicatedStorage.Shared.Constants)
 local FARM_SPAWN_CENTER = Vector3.new(0, 3, 200)
 local SPAWN_SPACING     = 8
 
-local function _getFarmSpawnPoints()
-	local tagged = game:GetService("CollectionService"):GetTagged("FarmSpawn")
-	if #tagged >= Constants.MAX_PLAYERS then
-		-- Use tagged Parts from the map
-		local points = {}
-		for i, part in ipairs(tagged) do
-			points[i] = part.CFrame + Vector3.new(0, 3, 0)
-			if i >= Constants.MAX_PLAYERS then break end
+-- Returns FarmSpawnPoint positions for the given biome's map only.
+-- Falls back to the hardcoded grid if the map isn't found.
+local function _getFarmSpawnPoints(biome)
+	-- Primary: find FarmSpawnPoint parts inside the active biome's map model
+	if biome then
+		local biomeMapName = biome:sub(1, 1):upper() .. biome:sub(2):lower() .. "Map"
+		local mapsFolder   = workspace:FindFirstChild("Maps")
+		local mapModel     = mapsFolder and mapsFolder:FindFirstChild(biomeMapName)
+		if mapModel then
+			local points = {}
+			for _, part in ipairs(mapModel:GetDescendants()) do
+				if part:IsA("BasePart") and part.Name == "FarmSpawnPoint" then
+					table.insert(points, part.CFrame + Vector3.new(0, 3, 0))
+				end
+			end
+			if #points > 0 then return points end
 		end
-		return points
 	end
 
-	-- Fallback: generate a 2×5 grid
+	-- Fallback: generate a 2×5 grid around FARM_SPAWN_CENTER
 	local points = {}
 	for row = 0, 1 do
 		for col = 0, 4 do
@@ -123,13 +130,13 @@ end
 
 local _spawnIndex = 0
 
-local function _teleportToFarm(player)
+local function _teleportToFarm(player, biome)
 	local character = player.Character
 	if not character then return end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local points = _getFarmSpawnPoints()
+	local points = _getFarmSpawnPoints(biome)
 	_spawnIndex = (_spawnIndex % #points) + 1
 	hrp.CFrame = points[_spawnIndex]
 end
@@ -163,13 +170,13 @@ end
 
 local GameManager = require(ServerScriptService.GameManager)
 
-GameManager.onPhaseChanged(function(phase)
+GameManager.onPhaseChanged(function(phase, biome)
 	if phase == Constants.PHASES.FARMING then
 		_spawnIndex = 0
 		task.wait(0.5)  -- small grace period after phase change
 		for _, player in ipairs(Players:GetPlayers()) do
 			if player.Character then
-				_teleportToFarm(player)
+				_teleportToFarm(player, biome)
 			end
 		end
 	end

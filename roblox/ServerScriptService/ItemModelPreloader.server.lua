@@ -11,18 +11,20 @@
 
 local ServerStorage       = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
-local ItemTypes           = require(game.ReplicatedStorage.Shared.ItemTypes)
-local ItemModelBuilder    = require(ServerScriptService.Modules.ItemModelBuilder)
 
--- ItemMeshes: optional folder populated with Blender-imported Models
-local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes")
-
--- Recreate ItemModels folder
+-- Recreate ItemModels folder first — even if requires below fail,
+-- the folder existence tells FarmingManager the preloader ran.
 local folder = ServerStorage:FindFirstChild("ItemModels")
 if folder then folder:Destroy() end
 folder = Instance.new("Folder")
 folder.Name   = "ItemModels"
 folder.Parent = ServerStorage
+
+local ItemTypes        = require(game.ReplicatedStorage.Shared.ItemTypes)
+local ItemModelBuilder = require(ServerScriptService.Modules.ItemModelBuilder)
+
+-- ItemMeshes: optional folder populated with Blender-imported Models
+local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes")
 
 local blenderCount    = 0
 local proceduralCount = 0
