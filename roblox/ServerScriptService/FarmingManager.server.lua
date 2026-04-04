@@ -31,6 +31,7 @@ local function _buildSpawnPool()
 	for rarity, names in pairs(ItemConfig._byRarity) do
 		local count = Constants.RARITY_SPAWN_DIST[rarity] or 0
 		for _ = 1, count do
+			if #names == 0 then continue end
 			local name = names[math.random(#names)]
 			table.insert(pool, { name = name, rarity = rarity })
 		end
@@ -47,7 +48,9 @@ end
 
 local function _spawnItems(biome)
 	_items = {}
+	print(string.format("[FarmingManager] _spawnItems called, biome=%s", tostring(biome)))
 	local pool = _buildSpawnPool()
+	print(string.format("[FarmingManager] Pool size: %d", #pool))
 	local mapCfg = require(ServerScriptService.Modules.BiomeConfig).get(biome)
 	-- Biome is uppercase (e.g. "FOREST"); map is TitleCase + "Map" (e.g. "ForestMap")
 	local biomeTitleCase = biome:sub(1, 1):upper() .. biome:sub(2):lower()
@@ -139,19 +142,27 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural)
+		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural),
+		-- or fall back to building procedurally. Both are wrapped in pcall so a
+		-- single bad builder never aborts the whole spawn loop.
 		local itemModels = ServerStorage:FindFirstChild("ItemModels")
 		local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
 		local model
-		if prebuilt then
-			model        = prebuilt:Clone()
-			model.Parent = mapModel
-		else
-			-- Fallback: build procedurally (shouldn't happen if Preloader ran)
-			model = ItemModelBuilder.build(entry.name, mapModel)
+		local buildOk, buildErr = pcall(function()
+			if prebuilt then
+				model        = prebuilt:Clone()
+				model.Parent = mapModel
+			else
+				model = ItemModelBuilder.build(entry.name, mapModel)
+			end
+		end)
+		if not buildOk then
+			warn("[FarmingManager] Build error for '" .. entry.name .. "': " .. tostring(buildErr))
+			continue
 		end
 		local primary = model and model.PrimaryPart
 		if not primary then
+			warn("[FarmingManager] No PrimaryPart for '" .. entry.name .. "' (prebuilt=" .. tostring(prebuilt ~= nil) .. ")")
 			if model then model:Destroy() end
 			continue
 		end
