@@ -146,27 +146,41 @@ AbilityConfig["Cactus"] = {
 	uiHint      = "🌵 Drop!",
 }
 
-AbilityConfig["Leaves"] = {
+-- Leaves removed in #88 (redundant trap)
+-- Scarf  removed in #88 (shape doesn't communicate steerHinder)
+
+AbilityConfig["Oil Can"] = {
 	cooldown    = 12,
-	duration    = 2,
+	duration    = 3,
 	targetType  = "track_drop",
-	effectKey   = "leafPile",      -- FOREST bonus: 40% slow
-	animKey     = "throwLeaves",
-	sfxKey      = "leaves_rustle",
-	uiHint      = "🍃 Scatter!",
-	biomeEffect = {
-		FOREST = { effectKey = "leafPileLarge", duration = 3, radius = 5 },
-	},
+	effectKey   = "oilSlick",      -- wide slippery zone; longer than Pizza
+	animKey     = "pourOilCan",
+	sfxKey      = "oil_pour",
+	uiHint      = "🛢️ Slick!",
 }
 
-AbilityConfig["Scarf"] = {
-	cooldown    = 12,
-	duration    = 1.5,
+AbilityConfig["Magnet"] = {
+	cooldown    = 14,
+	duration    = 2.5,
 	targetType  = "nearest",
-	effectKey   = "steerHinder",   -- 90% steering reduction
-	animKey     = "throwScarf",
-	sfxKey      = "scarf_whoosh",
-	uiHint      = "🧣 Tangle!",
+	effectKey   = "magnetPull",    -- pulls nearest vehicle toward activator
+	animKey     = "magnetPulse",
+	sfxKey      = "magnet_hum",
+	uiHint      = "🧲 Pull!",
+	-- hold input → repel variant (handled in effectKey server-side)
+}
+
+AbilityConfig["Firework"] = {
+	cooldown    = 16,
+	duration    = 2,
+	targetType  = "self",
+	effectKey   = "fireworkLaunch", -- speed burst + particle explosion
+	animKey     = "fireworkBlast",
+	sfxKey      = "firework_pop",
+	uiHint      = "🎆 LAUNCH!",
+	biomeEffect = {
+		SKY = { duration = 3.5 },   -- longer air time in SKY biome
+	},
 }
 
 AbilityConfig["Umbrella"] = {
@@ -196,14 +210,17 @@ AbilityConfig["Bubble Wrap"] = {
 
 -- ── ENGINE tier ───────────────────────────────────────────────────────────────
 
-AbilityConfig["Shovel"] = {
-	cooldown    = 10,
-	duration    = 2,
-	targetType  = "self",
-	effectKey   = "digMode",       -- immunity to MudZone + obstacle pass-through
-	animKey     = "shovelDig",
-	sfxKey      = "shovel_scrape",
-	uiHint      = "🥄 Dig!",
+-- Shovel removed in #88 (mislabeled as spoon, power=5 minimum)
+
+AbilityConfig["Fan"] = {
+	cooldown    = 12,
+	duration    = 1.5,
+	targetType  = "all_in_radius",
+	radius      = 10,
+	effectKey   = "gustBlast",     -- forward wind push; affects vehicles in front
+	animKey     = "fanSpin",
+	sfxKey      = "fan_whirr",
+	uiHint      = "🌬️ Gust!",
 }
 
 AbilityConfig["Flower"] = {
@@ -217,14 +234,19 @@ AbilityConfig["Flower"] = {
 	phaseRestrict = "FARMING",     -- only usable during farming
 }
 
-AbilityConfig["Big Gear"] = {
-	cooldown    = 15,
-	duration    = 3,              -- +1s stall appended server-side
+-- Big Gear removed in #88 (power=8 underwhelming, single gear doesn't read as engine)
+
+AbilityConfig["Wind Turbine"] = {
+	cooldown    = 16,
+	duration    = 3,
 	targetType  = "self",
-	effectKey   = "overclock",    -- speed ×1.5 for 3s then 1s forced slowdown
-	animKey     = "gearSpin",
-	sfxKey      = "gear_grind",
-	uiHint      = "⚙️ Overclock!",
+	effectKey   = "windHarvest",   -- speed boost scales with current velocity; SKY bonus ×1.5
+	animKey     = "turbineSpin",
+	sfxKey      = "turbine_hum",
+	uiHint      = "🌪️ Harvest!",
+	biomeEffect = {
+		SKY = { effectKey = "windHarvestSky", duration = 4 },
+	},
 }
 
 AbilityConfig["Propeller"] = {
@@ -410,24 +432,27 @@ AbilityConfig["Backpack"] = {
 	biomeEffect = {},              -- see effectKey — server checks current phase
 }
 
-AbilityConfig["Laptop"] = {
-	cooldown    = 25,
-	duration    = 5,
-	targetType  = "random_enemy",
-	effectKey   = "hackControls", -- target's A/D reversed for duration
-	animKey     = "laptopHack",
-	sfxKey      = "keyboard_clack",
-	uiHint      = "💻 Hack!",
+-- Laptop removed in #88 (body concept unclear; hack belongs to a SPECIAL item)
+-- Stick  removed in #88 (stickTrap nearly invisible; weakest stats)
+
+AbilityConfig["Barrel"] = {
+	cooldown    = 11,
+	duration    = 1.5,
+	targetType  = "self",
+	effectKey   = "barrelRoll",    -- lateral spin burst; pushes adjacent vehicles
+	animKey     = "barrelSpin",
+	sfxKey      = "barrel_roll",
+	uiHint      = "🪣 Roll!",
 }
 
-AbilityConfig["Stick"] = {
-	cooldown    = 10,
-	duration    = nil,
-	targetType  = "track_drop",
-	effectKey   = "stickTrap",    -- tiny trip hazard; lightweight
-	animKey     = "throwStick",
-	sfxKey      = "stick_snap",
-	uiHint      = "🪄 Trip!",
+AbilityConfig["Suitcase"] = {
+	cooldown    = 18,
+	duration    = 2,
+	targetType  = "self",
+	effectKey   = "lockdown",      -- brief stop + collision immunity; absorbs 1 hit
+	animKey     = "suitcaseLock",
+	sfxKey      = "suitcase_latch",
+	uiHint      = "🧳 Lock!",
 }
 
 AbilityConfig["Skateboard"] = {
