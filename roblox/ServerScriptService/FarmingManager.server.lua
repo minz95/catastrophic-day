@@ -142,19 +142,10 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural),
-		-- or fall back to building procedurally. Both are wrapped in pcall so a
-		-- single bad builder never aborts the whole spawn loop.
-		local itemModels = ServerStorage:FindFirstChild("ItemModels")
-		local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
+		-- Build item model. Wrapped in pcall so a bad builder never aborts the loop.
 		local model
 		local buildOk, buildErr = pcall(function()
-			if prebuilt then
-				model        = prebuilt:Clone()
-				model.Parent = mapModel
-			else
-				model = ItemModelBuilder.build(entry.name, mapModel)
-			end
+			model = ItemModelBuilder.build(entry.name, mapModel)
 		end)
 		if not buildOk then
 			warn("[FarmingManager] Build error for '" .. entry.name .. "': " .. tostring(buildErr))
@@ -162,7 +153,7 @@ local function _spawnItems(biome)
 		end
 		local primary = model and model.PrimaryPart
 		if not primary then
-			warn("[FarmingManager] No PrimaryPart for '" .. entry.name .. "' (prebuilt=" .. tostring(prebuilt ~= nil) .. ")")
+			warn("[FarmingManager] No PrimaryPart for '" .. entry.name .. "'")
 			if model then model:Destroy() end
 			continue
 		end
@@ -184,7 +175,12 @@ local function _spawnItems(biome)
 		rarityVal.Parent = primary
 
 		-- Rarity visuals + idle float/rotate
-		ItemVisualUpgrader.apply(model, entry.rarity)
+		local visualOk, visualErr = pcall(function()
+			ItemVisualUpgrader.apply(model, entry.rarity)
+		end)
+		if not visualOk then
+			warn("[FarmingManager] VisualUpgrader error for '" .. entry.name .. "': " .. tostring(visualErr))
+		end
 
 		-- Billboard label above item (always visible)
 		local billboard = Instance.new("BillboardGui")
