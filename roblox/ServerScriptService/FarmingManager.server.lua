@@ -65,6 +65,14 @@ local function _spawnItems(biome)
 	local cf, size = mapModel:GetBoundingBox()
 	local spawnCX, spawnCZ, halfX, halfZ, baseY
 
+	-- Per-biome hardcoded spawn zones that match each MapBuilder's farm area exactly.
+	-- Bounding-box inference is unreliable (tall trees skew Y; water planes skew X/Z).
+	local BIOME_ZONES = {
+		FOREST = { cx=0, cz=350, halfX=80, halfZ=120, baseY=2.5 },  -- FarmGround Z:200-500, Y top=1
+		OCEAN  = { cx=0, cz=375, halfX=55, halfZ=90,  baseY=4.5 },  -- FarmIsland Z:250-500, FarmGrass Y top=3
+		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=86  },  -- FarmPlatform Z:320-460, Y=84.5+1.5
+	}
+
 	if farmModel then
 		local fcf, fsize = farmModel:GetBoundingBox()
 		spawnCX = fcf.Position.X
@@ -73,22 +81,15 @@ local function _spawnItems(biome)
 		halfZ   = math.min(fsize.Z * 0.45, 150)
 		baseY   = fcf.Position.Y + 2
 	else
-		-- Fallback hardcoded farm zone (Z = 200 to 500, centre of FOREST farm)
-		spawnCX = cf.Position.X
-		spawnCZ = 350
-		halfX   = 80
-		halfZ   = 140
-		-- Find FarmGround part to get correct Y; fallback to Y=2 (ground surface).
-		-- NOTE: GetBoundingBox() returns the map CENTRE which is way up in the air
-		-- when tall trees are included — items would spawn floating invisibly.
-		local farmGround = mapModel:FindFirstChild("FarmGround")
-		if farmGround and farmGround:IsA("BasePart") then
-			baseY = farmGround.Position.Y + farmGround.Size.Y / 2 + 1.5
-		else
-			baseY = 2  -- ground level default
-		end
-		print(string.format("[FarmingManager] Spawn zone: cx=%d cz=%d baseY=%.1f", spawnCX, spawnCZ, baseY))
+		local zone = BIOME_ZONES[biome] or BIOME_ZONES.FOREST
+		spawnCX = zone.cx
+		spawnCZ = zone.cz
+		halfX   = zone.halfX
+		halfZ   = zone.halfZ
+		baseY   = zone.baseY
 	end
+	print(string.format("[FarmingManager] Spawn zone biome=%s cx=%d cz=%d halfX=%d halfZ=%d baseY=%.1f",
+		tostring(biome), spawnCX, spawnCZ, halfX, halfZ, baseY))
 
 	local usedPositions = {}
 	local MIN_SEPARATION = 6  -- studs

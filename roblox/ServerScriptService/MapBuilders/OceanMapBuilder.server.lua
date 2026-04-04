@@ -160,124 +160,179 @@ local function _buildFarmIsland(root)
 	end
 end
 
--- ─── Floating dock track ─────────────────────────────────────────────────────
+-- ─── Open-water race course ──────────────────────────────────────────────────
+-- Boats race directly on the water surface (WATER_Y = 0).
+-- No solid dock platforms — course is marked by buoy lines on left and right.
+-- Course width: 50 studs. Z goes from +200 (farm exit) to -600 (finish).
 
-local DOCK_Y = WATER_Y + 1.5
+local COURSE_HALF_W = 25   -- half-width of race lane (50 studs total)
+local BUOY_INTERVAL = 60   -- studs between buoy pairs along the course
 
-local function _buildDocks(root)
-	-- Main dock sections along Z axis
-	local sections = {
-		{ 0,   DOCK_Y, 150,  60, 220 },   -- x, y, z, width, length
-		{ 0,   DOCK_Y, 0,    50, 200 },
-		{ 0,   DOCK_Y, -150, 50, 200 },
-		{ 0,   DOCK_Y, -340, 50, 200 },
-		{ 0,   DOCK_Y, -530, 50, 140 },
-	}
-
-	for i, s in ipairs(sections) do
-		_part(root, {
-			Name     = "Dock_" .. i,
-			Size     = Vector3.new(s[4], 1.5, s[5]),
-			Position = Vector3.new(s[1], s[2], s[3]),
-			Color    = C.DOCK,
-			Material = MAT.WOOD,
-		})
-
-		-- Wood plank texture strips
-		for plank = -math.floor(s[5] / 2), math.floor(s[5] / 2), 4 do
-			_part(root, {
-				Name     = "Plank",
-				Size     = Vector3.new(s[4], 0.2, 2),
-				Position = Vector3.new(s[1], s[2] + 0.85, s[3] + plank),
-				Color    = Color3.fromRGB(160, 115, 70),
-				Material = MAT.WOOD,
-				CanCollide = false,
-			})
-		end
-
-		-- Rope railings
-		for side = -1, 1, 2 do
-			_part(root, {
-				Name     = "Railing_" .. i,
-				Size     = Vector3.new(0.4, 2, s[5]),
-				Position = Vector3.new(s[1] + side * (s[4] / 2 - 0.5), s[2] + 1.5, s[3]),
-				Color    = C.DOCK,
-				Material = MAT.WOOD,
-				CanCollide = false,
-			})
-		end
-	end
-end
-
--- ─── Buoyancy zones ──────────────────────────────────────────────────────────
+-- ─── Buoyancy zone covering the full race lane ───────────────────────────────
 
 local function _buildBuoyancyZones(root)
-	-- Large underwater trigger zones where buoyancy kicks in
-	local zones = {
-		{ 0, -2, 100,  80, 200 },
-		{ 0, -2, -80,  80, 200 },
-		{ 0, -2, -280, 80, 200 },
-	}
-	for i, bz in ipairs(zones) do
-		local zone = _part(root, {
-			Name         = "BuoyancyZone_" .. i,
-			Size         = Vector3.new(bz[4], 8, bz[5]),
-			Position     = Vector3.new(bz[1], bz[2], bz[3]),
-			CanCollide   = false,
-			Transparency = 1,
-		})
-		_tag(zone, "BuoyancyZone")
+	-- One large zone covering the entire race course so boats float throughout
+	local zone = _part(root, {
+		Name         = "BuoyancyZone_Main",
+		Size         = Vector3.new(COURSE_HALF_W * 2 + 20, 6, 900),
+		Position     = Vector3.new(0, WATER_Y - 1, -200),
+		CanCollide   = false,
+		Transparency = 1,
+	})
+	_tag(zone, "BuoyancyZone")
+
+	-- Additional wide zone near farm island start (boats enter from Z=200)
+	local startZone = _part(root, {
+		Name         = "BuoyancyZone_Start",
+		Size         = Vector3.new(COURSE_HALF_W * 2 + 20, 6, 200),
+		Position     = Vector3.new(0, WATER_Y - 1, 130),
+		CanCollide   = false,
+		Transparency = 1,
+	})
+	_tag(startZone, "BuoyancyZone")
+end
+
+-- ─── Course boundary buoys ────────────────────────────────────────────────────
+
+local function _buildCourseBuoys(root)
+	local buoyIdx = 0
+
+	-- Pairs of buoys every BUOY_INTERVAL studs from Z=180 to Z=-580
+	for z = 180, -580, -BUOY_INTERVAL do
+		buoyIdx = buoyIdx + 1
+		local isRedSide = (buoyIdx % 2 == 0)  -- alternate red/white per row
+
+		for _, side in ipairs({ -1, 1 }) do
+			local isRed = (side == 1) == isRedSide
+			-- Buoy body (sphere-ish cylinder)
+			local body = _part(root, {
+				Name     = "Buoy_" .. buoyIdx .. (side > 0 and "R" or "L"),
+				Size     = Vector3.new(2.5, 4, 2.5),
+				Position = Vector3.new(side * COURSE_HALF_W, WATER_Y + 2, z),
+				Color    = isRed and C.BUOY_RED or C.BUOY_WHITE,
+				Material = MAT.NEON,
+			})
+			_tag(body, "Obstacle")
+
+			-- Chain/anchor pole below water
+			_part(root, {
+				Name     = "BuoyChain_" .. buoyIdx .. (side > 0 and "R" or "L"),
+				Size     = Vector3.new(0.3, 4, 0.3),
+				Position = Vector3.new(side * COURSE_HALF_W, WATER_Y - 2, z),
+				Color    = Color3.fromRGB(80, 80, 80),
+				Material = MAT.METAL,
+				CanCollide = false,
+			})
+		end
 	end
 end
 
--- ─── Buoys (navigation markers + obstacles) ───────────────────────────────────
+-- ─── Corner turn markers ─────────────────────────────────────────────────────
 
-local function _buildBuoys(root)
-	local buoys = {
-		{ -20, 0,  -50 }, { 20, 0, -50 },
-		{ -20, 0, -200 }, { 20, 0, -200 },
-		{ -20, 0, -380 }, { 20, 0, -380 },
-	}
-	for i, b in ipairs(buoys) do
-		local buoy = _part(root, {
-			Name     = "Buoy_" .. i,
-			Size     = Vector3.new(3, 5, 3),
-			Position = Vector3.new(b[1], WATER_Y + 2, b[3]),
-			Color    = i % 2 == 0 and C.BUOY_RED or C.BUOY_WHITE,
+local function _buildTurnMarkers(root)
+	-- Large neon arches at key turn points to guide players
+	local turns = { 0, -180, -360, -520 }
+	for i, z in ipairs(turns) do
+		-- Left arch pillar
+		_part(root, {
+			Name     = "TurnArch_L" .. i,
+			Size     = Vector3.new(2, 12, 2),
+			Position = Vector3.new(-COURSE_HALF_W - 2, WATER_Y + 6, z),
+			Color    = Color3.fromRGB(40, 200, 255),
 			Material = MAT.NEON,
+			CanCollide = false,
 		})
-		_tag(buoy, "Obstacle")
+		-- Right arch pillar
+		_part(root, {
+			Name     = "TurnArch_R" .. i,
+			Size     = Vector3.new(2, 12, 2),
+			Position = Vector3.new(COURSE_HALF_W + 2, WATER_Y + 6, z),
+			Color    = Color3.fromRGB(40, 200, 255),
+			Material = MAT.NEON,
+			CanCollide = false,
+		})
+		-- Crossbar
+		_part(root, {
+			Name     = "TurnArch_Top" .. i,
+			Size     = Vector3.new(COURSE_HALF_W * 2 + 8, 2, 2),
+			Position = Vector3.new(0, WATER_Y + 12, z),
+			Color    = Color3.fromRGB(40, 200, 255),
+			Material = MAT.NEON,
+			CanCollide = false,
+		})
 	end
 end
 
--- ─── Boost pads ──────────────────────────────────────────────────────────────
+-- ─── Boost pads (floating platforms just above water) ────────────────────────
 
 local function _buildBoostPads(root)
-	local pads = { -20, -140, -310, -490 }
+	local pads = { 60, -100, -280, -450 }
 	for i, z in ipairs(pads) do
 		local pad = _part(root, {
 			Name     = "BoostPad_" .. i,
-			Size     = Vector3.new(10, 0.3, 6),
-			Position = Vector3.new(0, DOCK_Y + 0.9, z),
+			Size     = Vector3.new(12, 0.4, 8),
+			Position = Vector3.new(0, WATER_Y + 0.4, z),
 			Color    = C.BOOST,
 			Material = MAT.NEON,
 			CanCollide = false,
 		})
 		_tag(pad, "BoostPad")
+		-- Visual glow ring
+		_part(root, {
+			Name     = "BoostRing_" .. i,
+			Size     = Vector3.new(16, 0.2, 12),
+			Position = Vector3.new(0, WATER_Y + 0.3, z),
+			Color    = Color3.fromRGB(100, 240, 255),
+			Material = MAT.NEON,
+			Transparency = 0.5,
+			CanCollide = false,
+		})
 	end
+end
+
+-- ─── Start grid (boats start at Z=200, just below farm island) ───────────────
+
+local function _buildStartGrid(root)
+	-- Floating start platform / dock at Z=200
+	_part(root, {
+		Name     = "StartDock",
+		Size     = Vector3.new(COURSE_HALF_W * 2, 1, 20),
+		Position = Vector3.new(0, WATER_Y + 0.5, 200),
+		Color    = C.DOCK,
+		Material = MAT.WOOD,
+	})
+	-- Start line banner poles
+	for side = -1, 1, 2 do
+		_part(root, {
+			Name     = "StartPole" .. (side > 0 and "R" or "L"),
+			Size     = Vector3.new(1.5, 10, 1.5),
+			Position = Vector3.new(side * (COURSE_HALF_W + 1), WATER_Y + 5, 192),
+			Color    = C.BUOY_WHITE,
+			Material = MAT.METAL,
+		})
+	end
+	_part(root, {
+		Name     = "StartBanner",
+		Size     = Vector3.new(COURSE_HALF_W * 2 + 4, 2, 1),
+		Position = Vector3.new(0, WATER_Y + 10, 192),
+		Color    = Color3.fromRGB(255, 220, 40),
+		Material = MAT.NEON,
+		CanCollide = false,
+	})
 end
 
 -- ─── Finish line ─────────────────────────────────────────────────────────────
 
 local function _buildFinishLine(root)
-	for col = -12, 12, 4 do
+	-- Checkered floating surface at finish
+	for col = -COURSE_HALF_W, COURSE_HALF_W - 4, 4 do
 		for row = 0, 1 do
 			_part(root, {
 				Name     = "FinishTile",
-				Size     = Vector3.new(4, 0.3, 4),
-				Position = Vector3.new(col, DOCK_Y + 0.9, -598 + row * 4),
-				Color    = (math.floor(col / 4) + row) % 2 == 0
-					and Color3.new(1, 1, 1) or Color3.new(0, 0, 0),
+				Size     = Vector3.new(4, 0.4, 4),
+				Position = Vector3.new(col + 2, WATER_Y + 0.4, -596 + row * 4),
+				Color    = (math.floor((col + COURSE_HALF_W) / 4) + row) % 2 == 0
+					and Color3.new(1,1,1) or Color3.new(0,0,0),
 				Material = MAT.METAL,
 				CanCollide = false,
 			})
@@ -285,27 +340,27 @@ local function _buildFinishLine(root)
 	end
 
 	local finish = _part(root, {
-		Name       = "FinishLine",
-		Size       = Vector3.new(30, 8, 2),
-		Position   = Vector3.new(0, DOCK_Y + 4, -599),
-		CanCollide = false,
+		Name         = "FinishLine",
+		Size         = Vector3.new(COURSE_HALF_W * 2, 8, 2),
+		Position     = Vector3.new(0, WATER_Y + 4, -598),
+		CanCollide   = false,
 		Transparency = 1,
 	})
 	_tag(finish, "FinishLine")
 
 	for side = -1, 1, 2 do
 		_part(root, {
-			Name     = "FinishPole",
-			Size     = Vector3.new(1.5, 14, 1.5),
-			Position = Vector3.new(side * 16, DOCK_Y + 7, -599),
+			Name     = "FinishPole" .. (side > 0 and "R" or "L"),
+			Size     = Vector3.new(1.5, 16, 1.5),
+			Position = Vector3.new(side * (COURSE_HALF_W + 2), WATER_Y + 8, -598),
 			Color    = C.BUOY_WHITE,
 			Material = MAT.METAL,
 		})
 	end
 	_part(root, {
 		Name     = "FinishArch",
-		Size     = Vector3.new(34, 2, 1.5),
-		Position = Vector3.new(0, DOCK_Y + 14, -599),
+		Size     = Vector3.new(COURSE_HALF_W * 2 + 6, 2, 1.5),
+		Position = Vector3.new(0, WATER_Y + 16, -598),
 		Color    = Color3.fromRGB(40, 160, 255),
 		Material = MAT.NEON,
 		CanCollide = false,
@@ -318,10 +373,11 @@ local function buildOcean()
 	local root = _getOrCreateMap()
 	_buildWater(root)
 	_buildFarmIsland(root)
-	_buildDocks(root)
 	_buildBuoyancyZones(root)
-	_buildBuoys(root)
+	_buildCourseBuoys(root)
+	_buildTurnMarkers(root)
 	_buildBoostPads(root)
+	_buildStartGrid(root)
 	_buildFinishLine(root)
 
 	CollectionService:AddTag(root, "BiomeMap")
