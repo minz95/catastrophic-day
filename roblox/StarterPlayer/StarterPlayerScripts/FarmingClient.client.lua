@@ -142,6 +142,9 @@ end
 -- ─── E handler ────────────────────────────────────────────────────────────
 
 UserInputService.InputBegan:Connect(function(input, processed)
+	if input.KeyCode == Enum.KeyCode.E then
+		print("[FarmingClient] E pressed | processed=", processed, "| _enabled=", _enabled, "| _nearestItem=", _nearestItem)
+	end
 	if processed or not _enabled then return end
 
 	if input.KeyCode == Enum.KeyCode.E then
