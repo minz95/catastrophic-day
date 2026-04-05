@@ -43,7 +43,7 @@ local phaseHandlers = {
 		if FarmingClient    then FarmingClient.enable()                  end
 		if CraftingClient   then CraftingClient.disable()               end
 		if RacingClient     then RacingClient.disable()                 end
-		if CameraController then CameraController.setMode("farming")    end
+		if CameraController then CameraController.setMode("default")    end
 	end,
 
 	[Constants.PHASES.CRAFTING] = function(biome)

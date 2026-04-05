@@ -81,21 +81,23 @@ local function _spawnItems(biome)
 		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=86  },  -- FarmPlatform Z:320-460, Y=84.5+1.5
 	}
 
+	-- Always use hardcoded baseY: bounding-box Y is skewed by tall objects (barn, trees).
+	local zone = BIOME_ZONES[biome] or BIOME_ZONES.FOREST
+	baseY = zone.baseY
+
 	local farmModel = mapModel:FindFirstChild("FarmArea")
 	if farmModel then
+		-- Use bounding box only for horizontal extent (X/Z), not Y.
 		local fcf, fsize = farmModel:GetBoundingBox()
 		spawnCX = fcf.Position.X
 		spawnCZ = fcf.Position.Z
 		halfX   = math.min(fsize.X * 0.45, 80)
 		halfZ   = math.min(fsize.Z * 0.45, 150)
-		baseY   = fcf.Position.Y + 2
 	else
-		local zone = BIOME_ZONES[biome] or BIOME_ZONES.FOREST
 		spawnCX = zone.cx
 		spawnCZ = zone.cz
 		halfX   = zone.halfX
 		halfZ   = zone.halfZ
-		baseY   = zone.baseY
 	end
 	print(string.format("[FarmingManager] Spawn zone biome=%s cx=%d cz=%d halfX=%d halfZ=%d baseY=%.1f",
 		tostring(biome), spawnCX, spawnCZ, halfX, halfZ, baseY))

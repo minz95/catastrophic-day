@@ -193,11 +193,7 @@ RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
 	if phase == Constants.PHASES.LOBBY then
 		screen.Enabled = true
 		_buildPlayerList()
-	elseif phase ~= Constants.PHASES.LOBBY then
-		-- Fade out then hide
-		TweenService:Create(bg, TweenInfo.new(0.5), {
-			BackgroundTransparency = 1
-		}):Play()
-		task.delay(0.5, function() screen.Enabled = false end)
+	else
+		screen.Enabled = false
 	end
 end)
