@@ -15,7 +15,7 @@ local Constants        = require(ReplicatedStorage.Shared.Constants)
 -- 10 points arranged in a 2×5 grid around the farm area center.
 -- These are fallback positions; Studio map should have Parts tagged "FarmSpawn".
 
-local FARM_SPAWN_CENTER = Vector3.new(0, 3, 200)
+local FARM_SPAWN_CENTER = Vector3.new(0, 3, 320)
 local SPAWN_SPACING     = 8
 
 -- Returns FarmSpawnPoint positions for the given biome's map only.
