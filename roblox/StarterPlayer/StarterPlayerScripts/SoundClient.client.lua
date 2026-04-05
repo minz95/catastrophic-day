@@ -49,6 +49,7 @@ local function _playSFX(key)
 		s = _makeSound(cfg, SoundService)
 		_sfxCache[key] = s
 	end
+	if not s then return end  -- empty id, skip
 
 	-- Clone for overlapping hits
 	if s.IsPlaying then
@@ -112,6 +113,7 @@ local function _startAmbience(biome)
 	if not ambiList then return end
 	for _, cfg in ipairs(ambiList) do
 		local s = _makeSound(cfg, SoundService)
+		if not s then continue end
 		s.Volume = 0
 		s:Play()
 		TweenService:Create(s, TweenInfo.new(2.0), { Volume = cfg.volume }):Play()
