@@ -60,8 +60,17 @@ local function _cacheTransparencies(guiName, gui)
 	end
 end
 
+local function _findScreenGui(guiName)
+	for _, child in ipairs(PlayerGui:GetChildren()) do
+		if child.Name == guiName and child:IsA("ScreenGui") then
+			return child
+		end
+	end
+	return nil
+end
+
 local function _setEnabled(guiName, enabled, fadeDuration)
-	local gui = PlayerGui:FindFirstChild(guiName)
+	local gui = _findScreenGui(guiName)
 	if not gui then return end
 	_intendedEnabled[guiName] = enabled
 	_cacheTransparencies(guiName, gui)
