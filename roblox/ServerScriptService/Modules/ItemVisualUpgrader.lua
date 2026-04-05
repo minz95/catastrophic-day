@@ -215,28 +215,31 @@ end
 -- ─── Idle float animation ────────────────────────────────────────────────────
 
 local function _addIdleFloat(primary, cfg)
-	-- BodyPosition for float
-	local bp = Instance.new("BodyPosition")
-	bp.Name       = "IdleFloat"
-	bp.MaxForce   = Vector3.new(0, 4000, 0)
-	bp.D          = 50
-	bp.P          = 1000
-	bp.Position   = primary.Position
-	bp.Parent     = primary
+	-- BodyPosition drives the float. BodyPosition/BodyAngularVelocity are
+	-- deprecated in newer Studio but still functional; skip silently if they fail.
+	local bp, bav
+	pcall(function()
+		bp      = Instance.new("BodyPosition")
+		bp.Name = "IdleFloat"
+		bp.MaxForce = Vector3.new(0, 4000, 0)
+		bp.D    = 50
+		bp.P    = 1000
+		bp.Position = primary.Position
+		bp.Parent   = primary
 
-	-- BodyAngularVelocity for rotation
-	local bav = Instance.new("BodyAngularVelocity")
-	bav.Name          = "IdleRotate"
-	bav.AngularVelocity = Vector3.new(0, math.rad(cfg.rotSpeed), 0)
-	bav.MaxTorque     = Vector3.new(0, 4000, 0)
-	bav.P             = 1000
-	bav.Parent        = primary
+		bav     = Instance.new("BodyAngularVelocity")
+		bav.Name = "IdleRotate"
+		bav.AngularVelocity = Vector3.new(0, math.rad(cfg.rotSpeed), 0)
+		bav.MaxTorque = Vector3.new(0, 4000, 0)
+		bav.P   = 1000
+		bav.Parent = primary
+	end)
 
-	-- Sinusoidal float via Heartbeat
-	local baseY   = primary.Position.Y
-	local ampl    = cfg.floatAmpl
-	local speed   = cfg.floatSpeed
-	local phase   = math.random() * math.pi * 2   -- random start phase per item
+	-- Sinusoidal float via Heartbeat (works even without BodyPosition)
+	local baseY  = primary.Position.Y
+	local ampl   = cfg.floatAmpl
+	local speed  = cfg.floatSpeed
+	local phase  = math.random() * math.pi * 2
 
 	local conn
 	conn = game:GetService("RunService").Heartbeat:Connect(function()
@@ -244,9 +247,10 @@ local function _addIdleFloat(primary, cfg)
 			conn:Disconnect()
 			return
 		end
-		local t   = tick()
-		local newY = baseY + math.sin(t * speed * math.pi * 2 + phase) * ampl
-		bp.Position = Vector3.new(primary.Position.X, newY, primary.Position.Z)
+		local newY = baseY + math.sin(tick() * speed * math.pi * 2 + phase) * ampl
+		if bp then
+			bp.Position = Vector3.new(primary.Position.X, newY, primary.Position.Z)
+		end
 	end)
 
 	return conn

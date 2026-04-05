@@ -2,6 +2,8 @@
 -- Proximity detection, pickup prompt, contest UI, and steal prompt.
 -- Resolves: Issue #18, #64
 
+print("[FarmingClient] LocalScript started")
+
 local Players           = game:GetService("Players")
 local UserInputService  = game:GetService("UserInputService")
 local RunService        = game:GetService("RunService")
@@ -142,6 +144,9 @@ end
 -- ─── E handler ────────────────────────────────────────────────────────────
 
 UserInputService.InputBegan:Connect(function(input, processed)
+	if input.KeyCode == Enum.KeyCode.E then
+		print("[FarmingClient] E pressed | processed=", processed, "| _enabled=", _enabled, "| _nearestItem=", _nearestItem)
+	end
 	if processed or not _enabled then return end
 
 	if input.KeyCode == Enum.KeyCode.E then
@@ -154,14 +159,20 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 
 		if _nearestItem then
-			print("[FarmingClient] Requesting pickup:", tostring(_nearestItem))
-			local result = RemoteEvents.RequestPickup:InvokeServer(tostring(_nearestItem))
-			print("[FarmingClient] Pickup result:", result)
+			local idVal  = _nearestItem:FindFirstChild("ItemId")
+			local itemId = idVal and idVal.Value
+			if not itemId then
+				warn("[FarmingClient] E pressed but ItemId missing on:", _nearestItem.Name)
+				return
+			end
+			local result = RemoteEvents.RequestPickup:InvokeServer(itemId)
+			print("[FarmingClient] RequestPickup result:", result)
 			if result == "ok" then
 				_hidePrompt()
 				_nearestItem = nil
 			elseif result == "contested" then
-				_contestItemId  = tostring(_nearestItem)
+				local idv = _nearestItem and _nearestItem:FindFirstChild("ItemId")
+				_contestItemId  = idv and idv.Value or tostring(_nearestItem)
 				_contestPresses = 1
 			else
 				_flashPromptDenied()

@@ -443,14 +443,19 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 		primaryPart = buildCar(model, stats, palette, slots)
 	end
 
-	-- Weld all loose parts to chassis
+	-- Weld all loose parts to chassis; only chassis keeps CanCollide=true.
+	-- Cabin, decorations, and VehicleSeat must be non-collidable so the
+	-- player character can sit without being trapped inside geometry.
 	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") and part ~= primaryPart then
-			local hasWeld = false
-			for _, c in ipairs(part:GetChildren()) do
-				if c:IsA("WeldConstraint") then hasWeld = true; break end
+		if part:IsA("BasePart") then
+			if part ~= primaryPart then
+				part.CanCollide = false
+				local hasWeld = false
+				for _, c in ipairs(part:GetChildren()) do
+					if c:IsA("WeldConstraint") then hasWeld = true; break end
+				end
+				if not hasWeld then weld(primaryPart, part) end
 			end
-			if not hasWeld then weld(primaryPart, part) end
 		end
 	end
 

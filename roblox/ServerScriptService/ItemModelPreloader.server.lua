@@ -1,17 +1,99 @@
 -- ItemModelPreloader.server.lua
--- Pre-builds all 37 item 3D models into ServerStorage at game start.
--- FarmingManager clones from here instead of building per-spawn.
+-- Pre-builds all item 3D models into ServerStorage at game start.
+-- Priority: ServerStorage.ItemMeshes (Blender FBX imported in Studio) → procedural Part build.
+--
+-- To activate a Blender FBX model for an item:
+--   1. In Roblox Studio: File → Import 3D → select assets/items/<item>.fbx
+--   2. Rename the imported Model to the exact item name (e.g. "Barrel")
+--   3. Drag it into ServerStorage.ItemMeshes
+--   The preloader will automatically use it on next server start.
+-- Resolves: Issue #93
 
-local ServerStorage   = game:GetService("ServerStorage")
+local ServerStorage       = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local ItemModelBuilder = require(ServerScriptService.Modules.ItemModelBuilder)
-
--- Create or clear the item models folder
+-- Recreate ItemModels folder first — even if requires below fail,
+-- the folder existence tells FarmingManager the preloader ran.
 local folder = ServerStorage:FindFirstChild("ItemModels")
 if folder then folder:Destroy() end
 folder = Instance.new("Folder")
 folder.Name   = "ItemModels"
 folder.Parent = ServerStorage
 
-ItemModelBuilder.preloadAll(folder)
+local ItemTypes        = require(game.ReplicatedStorage.Shared.ItemTypes)
+local ItemModelBuilder = require(ServerScriptService.Modules.ItemModelBuilder)
+
+-- ItemMeshes: optional folder populated with Blender-imported Models
+local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes")
+
+local blenderCount    = 0
+local proceduralCount = 0
+
+for _, item in ipairs(ItemTypes.ALL) do
+	local name = item.name
+
+	-- 1. Try Blender-imported mesh from ItemMeshes
+	if meshesFolder then
+		local mesh = meshesFolder:FindFirstChild(name)
+		if mesh then
+			local clone = mesh:Clone()
+			clone.Name = name
+
+			-- Ensure PrimaryPart is set (pick largest BasePart by volume if missing)
+			if not clone.PrimaryPart then
+				local bestVol, bestPart = 0, nil
+				for _, part in ipairs(clone:GetDescendants()) do
+					if part:IsA("BasePart") then
+						local vol = part.Size.X * part.Size.Y * part.Size.Z
+						if vol > bestVol then
+							bestVol  = vol
+							bestPart = part
+						end
+					end
+				end
+				if bestPart then
+					clone.PrimaryPart = bestPart
+				end
+			end
+
+			-- Weld all other BaseParts to PrimaryPart so parts stay together
+			local primary = clone.PrimaryPart
+			if primary then
+				for _, part in ipairs(clone:GetDescendants()) do
+					if part:IsA("BasePart") and part ~= primary then
+						local alreadyWelded = false
+						for _, child in ipairs(part:GetChildren()) do
+							if child:IsA("WeldConstraint") then
+								alreadyWelded = true
+								break
+							end
+						end
+						if not alreadyWelded then
+							local weld  = Instance.new("WeldConstraint")
+							weld.Part0  = primary
+							weld.Part1  = part
+							weld.Parent = primary
+						end
+					end
+				end
+			end
+
+			clone.Parent = folder
+			blenderCount = blenderCount + 1
+			continue
+		end
+	end
+
+	-- 2. Fall back to procedural Part model
+	local ok, err = pcall(function()
+		ItemModelBuilder.build(name, folder)
+	end)
+	if ok then
+		proceduralCount = proceduralCount + 1
+	else
+		warn("[ItemModelPreloader] Failed to build " .. name .. ": " .. tostring(err))
+	end
+end
+
+print(string.format("[ItemModelPreloader] Ready: %d Blender mesh, %d procedural",
+	blenderCount, proceduralCount))

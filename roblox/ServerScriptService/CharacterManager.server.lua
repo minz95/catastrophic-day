@@ -19,8 +19,8 @@ local SPAWN_SPACING = 8
 
 -- Biome-specific fallback spawn centres (used when no FarmSpawn tags found in map)
 local BIOME_SPAWN_DEFAULTS = {
-	FOREST = Vector3.new(0,  3,  200),
-	OCEAN  = Vector3.new(0,  3,  200),
+	FOREST = Vector3.new(0,  3,  320),
+	OCEAN  = Vector3.new(0,  3,  320),
 	SKY    = Vector3.new(0, 86,  390),  -- matches SkyMapBuilder SKY_BASE_Y + 4.5 + 1.5
 }
 
@@ -133,7 +133,7 @@ end
 local _spawnIndex  = 0
 local _activeBiome = nil
 
-local function _teleportToFarm(player)
+local function _teleportToFarm(player, biome)
 	local character = player.Character
 	if not character then return end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -173,15 +173,36 @@ end
 
 local GameManager = require(ServerScriptService.GameManager)
 
+local function _setMovement(player, enabled)
+	local char = player.Character
+	local hum  = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+	hum.WalkSpeed  = enabled and 16 or 0
+	hum.JumpHeight = enabled and 7.2 or 0
+end
+
 GameManager.onPhaseChanged(function(phase, biome)
 	if phase == Constants.PHASES.FARMING then
 		_activeBiome = biome
 		_spawnIndex  = 0
 		task.wait(0.5)  -- small grace period after phase change
 		for _, player in ipairs(Players:GetPlayers()) do
+			_setMovement(player, true)
 			if player.Character then
-				_teleportToFarm(player)
+				_teleportToFarm(player, biome)
 			end
+		end
+
+	elseif phase == Constants.PHASES.CRAFTING then
+		-- Freeze all characters so players can't walk around during modal
+		for _, player in ipairs(Players:GetPlayers()) do
+			_setMovement(player, false)
+		end
+
+	elseif phase == Constants.PHASES.RACING then
+		-- Restore movement (vehicle controls take over, but humanoid should not be frozen)
+		for _, player in ipairs(Players:GetPlayers()) do
+			_setMovement(player, true)
 		end
 	end
 end)

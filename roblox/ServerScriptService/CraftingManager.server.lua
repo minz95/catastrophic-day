@@ -13,6 +13,7 @@ local ItemConfig     = require(ServerScriptService.Modules.ItemConfig)
 local VehicleStats   = require(ReplicatedStorage.Shared.VehicleStats)
 local GameManager    = require(ServerScriptService.GameManager)
 local SessionManager = require(ServerScriptService.SessionManager)
+local BiomeConfig    = require(ServerScriptService.Modules.BiomeConfig)
 
 -- ─── State ────────────────────────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ GameManager.onPhaseChanged(function(phase, biome)
 		-- Spawn vehicles for all players
 		task.spawn(function()
 			local VehicleBuilder = require(ServerScriptService.Modules.VehicleBuilder)
-			local spawnGrid = _buildSpawnGrid()
+			local spawnGrid = _buildSpawnGrid(biome)
 
 			for i, player in ipairs(Players:GetPlayers()) do
 				local data = SessionManager.getData(player)
@@ -149,13 +150,26 @@ GameManager.onPhaseChanged(function(phase, biome)
 				if model then
 					model.Parent = game.Workspace
 					SessionManager.setVehicle(player, model, stats)
-					RemoteEvents.VehicleSpawned:FireAllClients(player.UserId, model)
 
-					-- Seat player
+					-- Give the model one frame to replicate before firing the client
+					-- event and before calling :Sit(), otherwise the client receives
+					-- a model reference it hasn't loaded yet and seat physics are wrong.
+					task.wait()
+
 					local seat = model:FindFirstChildWhichIsA("VehicleSeat", true)
-					if seat and player.Character then
-						seat:Sit(player.Character:FindFirstChild("Humanoid"))
+					if seat then
+						print(string.format("[CraftingManager] Vehicle for %s spawned at %s | seat=%s",
+							player.Name, tostring(model.PrimaryPart and model.PrimaryPart.Position), tostring(seat)))
+						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
+						if player.Character then
+							seat:Sit(player.Character:FindFirstChild("Humanoid"))
+						end
+					else
+						warn("[CraftingManager] No VehicleSeat found in vehicle for", player.Name)
+						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
 					end
+				else
+					warn("[CraftingManager] VehicleBuilder.build returned nil for", player.Name)
 				end
 			end
 		end)
@@ -164,15 +178,20 @@ end)
 
 -- ─── Build race start grid ────────────────────────────────────────────────────
 
-function _buildSpawnGrid()
-	-- 2 rows of 5, staggered 6 studs apart, at track start (Z = +550)
+function _buildSpawnGrid(biome)
+	local cfg  = biome and BiomeConfig[biome]
+	local startZ = (cfg and cfg.raceStartZ) or 195
+	local startY = (cfg and cfg.raceStartY) or 2
+
+	-- 2 rows of 5, staggered 8 studs apart, pointing down-Z (race direction)
 	local grid = {}
 	for i = 1, Constants.MAX_PLAYERS do
 		local row = math.ceil(i / 5)
 		local col = ((i - 1) % 5) + 1
 		local x   = (col - 3) * 7
-		local z   = 550 - (row - 1) * 10
-		table.insert(grid, CFrame.new(x, 2, z))
+		local z   = startZ + (row - 1) * 8  -- row 1 at startZ, row 2 slightly behind
+		table.insert(grid, CFrame.new(x, startY, z))
 	end
+	print(string.format("[CraftingManager] Race spawn grid: biome=%s startZ=%d startY=%d", tostring(biome), startZ, startY))
 	return grid
 end

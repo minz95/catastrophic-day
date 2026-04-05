@@ -1,8 +1,9 @@
 -- ItemModelBuilder.lua
--- Builds 3D Part-based models for all 37 items.
--- Each item is a Model with a PrimaryPart and named sub-parts.
--- Materials use Roblox built-in textures — no external asset IDs needed.
--- Resolves: Issue #24 #25 #26
+-- Builds 3D models for all items.
+-- Priority: MeshPart (from Blender FBX asset ID in MeshAssetIds) → procedural Part fallback.
+-- To activate a Blender model: import the FBX in Roblox Studio and paste the asset ID
+-- into ReplicatedStorage/Shared/MeshAssetIds.lua for that item name.
+-- Resolves: Issue #24 #25 #26 #93
 
 local ItemModelBuilder = {}
 
@@ -70,12 +71,36 @@ local SCALE = 1.5
 
 -- ─── BODY items ──────────────────────────────────────────────────────────────
 
-local function _buildStick(root)
-	local main = _cylinder(root, "Stick",
-		0.15 * SCALE, 3 * SCALE, Vector3.new(0,0,0),
-		CFrame.Angles(0, 0, math.rad(15)),
-		Color3.fromRGB(140, 90, 40), Enum.Material.Wood)
-	return main
+-- _buildStick removed in #88 (too weak, boring trap ability)
+
+local function _buildBarrel(root)
+	local body = _cylinder(root, "Body",
+		1.0 * SCALE, 1.6 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(130, 80, 35), Enum.Material.Wood)
+	-- Vertical stave seams (thin dark lines)
+	for i = 0, 5 do
+		local angle = (i / 6) * math.pi * 2
+		local sx = math.cos(angle) * 1.02 * SCALE
+		local sz = math.sin(angle) * 1.02 * SCALE
+		local stave = _p(root, "Stave" .. i,
+			Vector3.new(0.06 * SCALE, 1.62 * SCALE, 0.06 * SCALE),
+			CFrame.new(sx, 0, sz),
+			Color3.fromRGB(90, 55, 20), Enum.Material.Wood)
+		_w(root, body, stave)
+	end
+	-- Metal hoop rings
+	for _, y in ipairs({ -0.55 * SCALE, 0, 0.55 * SCALE }) do
+		local hoop = _cylinder(root, "Hoop",
+			1.05 * SCALE, 0.14 * SCALE, Vector3.new(0, y, 0), nil,
+			Color3.fromRGB(80, 80, 85), Enum.Material.Metal)
+		_w(root, body, hoop)
+	end
+	-- Top cap
+	local cap = _cylinder(root, "Cap",
+		0.95 * SCALE, 0.1 * SCALE, Vector3.new(0, 0.85 * SCALE, 0), nil,
+		Color3.fromRGB(110, 65, 28), Enum.Material.Wood)
+	_w(root, body, cap)
+	return body
 end
 
 local function _buildCardboardBox(root)
@@ -213,26 +238,52 @@ local function _buildKite(root)
 	return top
 end
 
-local function _buildLaptop(root)
-	local base = _p(root, "Base",
-		Vector3.new(2.2 * SCALE, 0.15 * SCALE, 1.5 * SCALE), CFrame.new(0,0,0),
-		Color3.fromRGB(60, 60, 60), Enum.Material.SmoothPlastic)
-	local screen = _p(root, "Screen",
-		Vector3.new(2.2 * SCALE, 1.5 * SCALE, 0.1 * SCALE),
-		CFrame.new(0, 0.85 * SCALE, -0.7 * SCALE) * CFrame.Angles(math.rad(-15), 0, 0),
-		Color3.fromRGB(40, 40, 40), Enum.Material.SmoothPlastic)
-	local display = _p(root, "Display",
-		Vector3.new(2 * SCALE, 1.3 * SCALE, 0.05 * SCALE),
-		CFrame.new(0, 0.85 * SCALE, -0.74 * SCALE) * CFrame.Angles(math.rad(-15), 0, 0),
-		Color3.fromRGB(40, 120, 200), Enum.Material.Neon)
-	_w(root, base, screen)
-	_w(root, base, display)
-	-- Keyboard keys (simplified grid)
-	local kbd = _p(root, "Keyboard",
-		Vector3.new(1.8 * SCALE, 0.05 * SCALE, 1.1 * SCALE), CFrame.new(0, 0.1 * SCALE, 0.1 * SCALE),
-		Color3.fromRGB(80, 80, 80), Enum.Material.SmoothPlastic)
-	_w(root, base, kbd)
-	return base
+-- _buildLaptop removed in #88 (body concept unclear, hack ability doesn't fit BODY slot)
+
+local function _buildSuitcase(root)
+	-- Main shell — hard-sided rounded-corner box
+	local shell = _p(root, "Shell",
+		Vector3.new(2.2 * SCALE, 1.6 * SCALE, 0.8 * SCALE), CFrame.new(0, 0, 0),
+		Color3.fromRGB(40, 100, 180), Enum.Material.SmoothPlastic)
+	-- Trim strip around the middle seam
+	local trim = _p(root, "Trim",
+		Vector3.new(2.22 * SCALE, 0.12 * SCALE, 0.82 * SCALE), CFrame.new(0, 0, 0),
+		Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
+	_w(root, shell, trim)
+	-- Handle
+	local handle = _p(root, "Handle",
+		Vector3.new(0.8 * SCALE, 0.12 * SCALE, 0.12 * SCALE),
+		CFrame.new(0, 0.9 * SCALE, 0),
+		Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
+	_w(root, shell, handle)
+	local hL = _cylinder(root, "HandleLegL",
+		0.06 * SCALE, 0.3 * SCALE,
+		Vector3.new(-0.4 * SCALE, 0.78 * SCALE, 0), nil,
+		Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
+	local hR = _cylinder(root, "HandleLegR",
+		0.06 * SCALE, 0.3 * SCALE,
+		Vector3.new(0.4 * SCALE, 0.78 * SCALE, 0), nil,
+		Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
+	_w(root, shell, hL)
+	_w(root, shell, hR)
+	-- Corner guards (4 rounded nubs)
+	for _, cx in ipairs({ -1.0 * SCALE, 1.0 * SCALE }) do
+		for _, cy in ipairs({ -0.7 * SCALE, 0.7 * SCALE }) do
+			local guard = _sphere(root, "Guard",
+				0.14 * SCALE, Vector3.new(cx, cy, 0),
+				Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
+			_w(root, shell, guard)
+		end
+	end
+	-- Two latches
+	for _, lx in ipairs({ -0.5 * SCALE, 0.5 * SCALE }) do
+		local latch = _p(root, "Latch",
+			Vector3.new(0.25 * SCALE, 0.18 * SCALE, 0.1 * SCALE),
+			CFrame.new(lx, 0, 0.45 * SCALE),
+			Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
+		_w(root, shell, latch)
+	end
+	return shell
 end
 
 local function _buildBackpack(root)
@@ -332,16 +383,50 @@ end
 
 -- ─── ENGINE items ─────────────────────────────────────────────────────────────
 
-local function _buildShovel(root)
-	local handle = _cylinder(root, "Handle",
-		0.12 * SCALE, 3 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(120, 80, 40), Enum.Material.Wood)
-	local blade = _p(root, "Blade",
-		Vector3.new(0.8 * SCALE, 0.6 * SCALE, 0.08 * SCALE),
-		CFrame.new(0, -1.6 * SCALE, 0),
-		Color3.fromRGB(160, 160, 160), Enum.Material.Metal)
-	_w(root, handle, blade)
-	return handle
+-- _buildShovel removed in #88 (mislabeled as spoon, power=5 minimum)
+
+local function _buildFan(root)
+	-- Stand base
+	local base = _p(root, "Base",
+		Vector3.new(1.1 * SCALE, 0.18 * SCALE, 0.8 * SCALE), CFrame.new(0, -1.3 * SCALE, 0),
+		Color3.fromRGB(220, 220, 220), Enum.Material.SmoothPlastic)
+	-- Pole
+	local pole = _cylinder(root, "Pole",
+		0.08 * SCALE, 1.3 * SCALE, Vector3.new(0, -0.65 * SCALE, 0), nil,
+		Color3.fromRGB(200, 200, 200), Enum.Material.SmoothPlastic)
+	_w(root, base, pole)
+	-- Motor housing (sphere-ish cylinder)
+	local motor = _cylinder(root, "Motor",
+		0.35 * SCALE, 0.5 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(60, 60, 60), Enum.Material.SmoothPlastic)
+	_w(root, base, motor)
+	-- Grill cage (thin ring)
+	local cage = _cylinder(root, "Cage",
+		1.0 * SCALE, 0.1 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(180, 180, 180), Enum.Material.Metal)
+	_w(root, base, cage)
+	-- 4 grill spokes
+	for i = 0, 3 do
+		local angle = (i / 4) * math.pi * 2
+		local spoke = _p(root, "Spoke" .. i,
+			Vector3.new(0.05 * SCALE, 0.1 * SCALE, 1.9 * SCALE),
+			CFrame.new(0, 0, 0) * CFrame.Angles(0, angle, 0),
+			Color3.fromRGB(180, 180, 180), Enum.Material.Metal)
+		_w(root, base, spoke)
+	end
+	-- 3 blades
+	local bladeColors = { Color3.fromRGB(80, 160, 220), Color3.fromRGB(60, 140, 200), Color3.fromRGB(100, 180, 230) }
+	for i = 0, 2 do
+		local angle = (i / 3) * math.pi * 2
+		local blade = _wedge(root, "Blade" .. i,
+			Vector3.new(0.18 * SCALE, 0.85 * SCALE, 0.06 * SCALE),
+			CFrame.new(0, 0, 0)
+				* CFrame.Angles(0, angle, math.rad(25))
+				* CFrame.new(0, 0.55 * SCALE, 0),
+			bladeColors[i + 1], Enum.Material.SmoothPlastic)
+		_w(root, base, blade)
+	end
+	return base
 end
 
 local function _buildFlower(root)
@@ -413,25 +498,49 @@ local function _buildWateringCan(root)
 	return body
 end
 
-local function _buildBigGear(root)
-	local center = _cylinder(root, "Center",
-		0.8 * SCALE, 0.4 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(140, 140, 140), Enum.Material.Metal)
-	local hole = _cylinder(root, "Hole",
-		0.25 * SCALE, 0.5 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(80, 80, 80), Enum.Material.Metal)
-	_w(root, center, hole)
-	for i = 0, 7 do
-		local angle = (i / 8) * math.pi * 2
-		local tx = math.cos(angle) * 0.9 * SCALE
-		local tz = math.sin(angle) * 0.9 * SCALE
-		local tooth = _p(root, "Tooth" .. i,
-			Vector3.new(0.25 * SCALE, 0.4 * SCALE, 0.35 * SCALE),
-			CFrame.new(tx, 0, tz) * CFrame.Angles(0, -angle, 0),
-			Color3.fromRGB(130, 130, 130), Enum.Material.Metal)
-		_w(root, center, tooth)
+-- _buildBigGear removed in #88 (power=8 too low, doesn't read as engine)
+
+local function _buildWindTurbine(root)
+	-- Foundation / base disc
+	local base = _cylinder(root, "Base",
+		0.5 * SCALE, 0.25 * SCALE, Vector3.new(0, -2.0 * SCALE, 0), nil,
+		Color3.fromRGB(160, 155, 150), Enum.Material.SmoothPlastic)
+	-- Tower
+	local tower = _cylinder(root, "Tower",
+		0.18 * SCALE, 3.5 * SCALE, Vector3.new(0, -0.25 * SCALE, 0), nil,
+		Color3.fromRGB(235, 235, 230), Enum.Material.SmoothPlastic)
+	_w(root, base, tower)
+	-- Nacelle (box on top of tower)
+	local nacelle = _p(root, "Nacelle",
+		Vector3.new(0.8 * SCALE, 0.4 * SCALE, 0.4 * SCALE),
+		CFrame.new(0, 1.6 * SCALE, 0),
+		Color3.fromRGB(230, 230, 225), Enum.Material.SmoothPlastic)
+	_w(root, base, nacelle)
+	-- Hub (small sphere in front of nacelle)
+	local hub = _sphere(root, "Hub", 0.18 * SCALE, Vector3.new(0.5 * SCALE, 1.6 * SCALE, 0),
+		Color3.fromRGB(200, 195, 190), Enum.Material.SmoothPlastic)
+	_w(root, base, hub)
+	-- 3 long tapered blades, 120° apart
+	for i = 0, 2 do
+		local angle = (i / 3) * math.pi * 2
+		local bx = math.cos(angle) * 0.9 * SCALE
+		local by = math.sin(angle) * 0.9 * SCALE
+		local blade = _p(root, "Blade" .. i,
+			Vector3.new(0.22 * SCALE, 1.9 * SCALE, 0.08 * SCALE),
+			CFrame.new(0.5 * SCALE + bx, 1.6 * SCALE + by, 0)
+				* CFrame.Angles(0, 0, angle),
+			Color3.fromRGB(235, 235, 225), Enum.Material.SmoothPlastic)
+		_w(root, base, blade)
+		-- Blade tip (darker)
+		local tip = _p(root, "BladeTip" .. i,
+			Vector3.new(0.14 * SCALE, 0.3 * SCALE, 0.08 * SCALE),
+			CFrame.new(0.5 * SCALE + bx + math.cos(angle + math.pi / 2) * 1.9 * SCALE,
+				1.6 * SCALE + by + math.sin(angle + math.pi / 2) * 1.9 * SCALE, 0)
+				* CFrame.Angles(0, 0, angle),
+			Color3.fromRGB(160, 155, 145), Enum.Material.SmoothPlastic)
+		_w(root, base, tip)
 	end
-	return center
+	return base
 end
 
 local function _buildLeafBlower(root)
@@ -648,27 +757,48 @@ local function _buildToiletPaper(root)
 	return roll
 end
 
-local function _buildLeaves(root)
-	local stem = _cylinder(root, "Stem",
-		0.08 * SCALE, 1.5 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(80, 120, 40), Enum.Material.SmoothPlastic)
-	local leafColors = {
-		Color3.fromRGB(60, 160, 40), Color3.fromRGB(80, 180, 50),
-		Color3.fromRGB(50, 140, 30), Color3.fromRGB(100, 170, 60),
-		Color3.fromRGB(40, 150, 35),
-	}
-	for i = 0, 4 do
-		local angle = (i / 5) * math.pi * 2
-		local lx = math.cos(angle) * 0.6 * SCALE
-		local lz = math.sin(angle) * 0.6 * SCALE
-		local leaf = _p(root, "Leaf" .. i,
-			Vector3.new(0.7 * SCALE, 0.06 * SCALE, 0.4 * SCALE),
-			CFrame.new(lx * 0.5, 0.5 * SCALE, lz * 0.5)
-				* CFrame.Angles(0, angle, math.rad(-20)),
-			leafColors[i + 1], Enum.Material.SmoothPlastic)
-		_w(root, stem, leaf)
-	end
-	return stem
+-- _buildLeaves removed in #88 (redundant track_drop trap alongside Pizza + Cactus)
+
+local function _buildOilCan(root)
+	-- Rounded teardrop body
+	local body = _cylinder(root, "Body",
+		0.7 * SCALE, 1.4 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(140, 100, 40), Enum.Material.Metal)
+	-- Shoulder (top narrowing)
+	local shoulder = _cylinder(root, "Shoulder",
+		0.45 * SCALE, 0.5 * SCALE, Vector3.new(0, 0.9 * SCALE, 0), nil,
+		Color3.fromRGB(130, 90, 35), Enum.Material.Metal)
+	_w(root, body, shoulder)
+	-- Neck
+	local neck = _cylinder(root, "Neck",
+		0.18 * SCALE, 0.45 * SCALE, Vector3.new(0, 1.35 * SCALE, 0), nil,
+		Color3.fromRGB(110, 80, 30), Enum.Material.Metal)
+	_w(root, body, neck)
+	-- Long curved spout
+	local spout = _cylinder(root, "Spout",
+		0.1 * SCALE, 1.2 * SCALE,
+		Vector3.new(0.45 * SCALE, 1.45 * SCALE, 0),
+		CFrame.Angles(0, 0, math.rad(-35)),
+		Color3.fromRGB(100, 75, 25), Enum.Material.Metal)
+	_w(root, body, spout)
+	-- Handle loop (rectangle suggestion)
+	local hBase = _cylinder(root, "HandleBase",
+		0.07 * SCALE, 1.2 * SCALE,
+		Vector3.new(-0.55 * SCALE, 0.3 * SCALE, 0),
+		CFrame.Angles(0, 0, math.rad(20)),
+		Color3.fromRGB(80, 60, 20), Enum.Material.Metal)
+	_w(root, body, hBase)
+	-- Label band (painted stripe)
+	local label = _cylinder(root, "Label",
+		0.72 * SCALE, 0.5 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(200, 60, 30), Enum.Material.SmoothPlastic)
+	_w(root, body, label)
+	-- Dark oil drip (neon accent)
+	local drip = _sphere(root, "Drip", 0.12 * SCALE,
+		Vector3.new(0, -0.8 * SCALE, 0),
+		Color3.fromRGB(20, 20, 20), Enum.Material.Neon)
+	_w(root, body, drip)
+	return body
 end
 
 local function _buildRacingFlag(root)
@@ -722,20 +852,92 @@ local function _buildCactus(root)
 	return trunk
 end
 
-local function _buildScarf(root)
-	-- Long wavy ribbon
-	local main = _p(root, "Scarf",
-		Vector3.new(0.4 * SCALE, 0.15 * SCALE, 3 * SCALE), CFrame.new(0, 0, 0),
-		Color3.fromRGB(180, 60, 60), Enum.Material.Fabric)
-	local stripe = _p(root, "Stripe",
-		Vector3.new(0.4 * SCALE, 0.16 * SCALE, 0.4 * SCALE), CFrame.new(0, 0, -1.2 * SCALE),
-		Color3.fromRGB(240, 240, 240), Enum.Material.Fabric)
-	local fringe = _p(root, "Fringe",
-		Vector3.new(0.3 * SCALE, 0.15 * SCALE, 0.5 * SCALE), CFrame.new(0, 0, -1.6 * SCALE),
-		Color3.fromRGB(180, 60, 60), Enum.Material.Fabric)
-	_w(root, main, stripe)
-	_w(root, main, fringe)
-	return main
+-- _buildScarf removed in #88 (boring shape, steerHinder not communicated visually)
+
+local function _buildMagnet(root)
+	-- U-shape horseshoe: two vertical poles + curved top arc
+	-- Left pole
+	local poleL = _cylinder(root, "PoleL",
+		0.35 * SCALE, 1.8 * SCALE, Vector3.new(-0.55 * SCALE, 0, 0), nil,
+		Color3.fromRGB(220, 40, 40), Enum.Material.SmoothPlastic)
+	-- Right pole
+	local poleR = _cylinder(root, "PoleR",
+		0.35 * SCALE, 1.8 * SCALE, Vector3.new(0.55 * SCALE, 0, 0), nil,
+		Color3.fromRGB(40, 60, 220), Enum.Material.SmoothPlastic)
+	_w(root, poleL, poleR)
+	-- Arc (connector at top) — approximate with a rotated cylinder
+	local arc = _cylinder(root, "Arc",
+		0.35 * SCALE, 1.1 * SCALE,
+		Vector3.new(0, 0.9 * SCALE, 0),
+		CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(100, 100, 100), Enum.Material.Metal)
+	_w(root, poleL, arc)
+	-- Pole tips (silver)
+	local tipL = _cylinder(root, "TipL",
+		0.36 * SCALE, 0.25 * SCALE, Vector3.new(-0.55 * SCALE, -1.0 * SCALE, 0), nil,
+		Color3.fromRGB(200, 200, 200), Enum.Material.Metal)
+	local tipR = _cylinder(root, "TipR",
+		0.36 * SCALE, 0.25 * SCALE, Vector3.new(0.55 * SCALE, -1.0 * SCALE, 0), nil,
+		Color3.fromRGB(200, 200, 200), Enum.Material.Metal)
+	_w(root, poleL, tipL)
+	_w(root, poleL, tipR)
+	-- Glow aura on tips (neon)
+	local glowL = _sphere(root, "GlowL", 0.25 * SCALE, Vector3.new(-0.55 * SCALE, -1.15 * SCALE, 0),
+		Color3.fromRGB(255, 100, 100), Enum.Material.Neon)
+	local glowR = _sphere(root, "GlowR", 0.25 * SCALE, Vector3.new(0.55 * SCALE, -1.15 * SCALE, 0),
+		Color3.fromRGB(100, 130, 255), Enum.Material.Neon)
+	_w(root, poleL, glowL)
+	_w(root, poleL, glowR)
+	return poleL
+end
+
+local function _buildFirework(root)
+	-- Tube body
+	local tube = _cylinder(root, "Tube",
+		0.35 * SCALE, 2.2 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(200, 50, 50), Enum.Material.SmoothPlastic)
+	-- Label band
+	local band = _cylinder(root, "Band",
+		0.36 * SCALE, 0.6 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(240, 210, 40), Enum.Material.SmoothPlastic)
+	_w(root, tube, band)
+	-- Top cap
+	local cap = _cylinder(root, "Cap",
+		0.36 * SCALE, 0.2 * SCALE, Vector3.new(0, 1.2 * SCALE, 0), nil,
+		Color3.fromRGB(160, 30, 30), Enum.Material.SmoothPlastic)
+	_w(root, tube, cap)
+	-- Starburst crown — 8 neon star rays
+	local starColors = {
+		Color3.fromRGB(255, 200, 40), Color3.fromRGB(255, 80, 80),
+		Color3.fromRGB(80, 200, 255), Color3.fromRGB(120, 255, 80),
+		Color3.fromRGB(255, 120, 200), Color3.fromRGB(255, 240, 80),
+		Color3.fromRGB(80, 120, 255), Color3.fromRGB(255, 160, 40),
+	}
+	for i = 0, 7 do
+		local angle = (i / 8) * math.pi * 2
+		local rx = math.cos(angle) * 0.7 * SCALE
+		local rz = math.sin(angle) * 0.7 * SCALE
+		local ray = _sphere(root, "Ray" .. i, 0.18 * SCALE,
+			Vector3.new(rx, 1.55 * SCALE, rz),
+			starColors[i + 1], Enum.Material.Neon)
+		_w(root, tube, ray)
+		local rayStick = _cylinder(root, "RayStick" .. i,
+			0.05 * SCALE, 0.65 * SCALE,
+			Vector3.new(rx * 0.5, 1.45 * SCALE, rz * 0.5),
+			CFrame.Angles(0, 0, math.rad(-90)) * CFrame.Angles(math.rad(angle * 180 / math.pi), 0, 0),
+			starColors[i + 1], Enum.Material.Neon)
+		_w(root, tube, rayStick)
+	end
+	-- Fuse (thin white line at bottom)
+	local fuse = _cylinder(root, "Fuse",
+		0.04 * SCALE, 0.5 * SCALE, Vector3.new(0, -1.35 * SCALE, 0), nil,
+		Color3.fromRGB(240, 230, 180), Enum.Material.SmoothPlastic)
+	_w(root, tube, fuse)
+	-- Fuse glow tip
+	local spark = _sphere(root, "Spark", 0.08 * SCALE, Vector3.new(0, -1.6 * SCALE, 0),
+		Color3.fromRGB(255, 200, 50), Enum.Material.Neon)
+	_w(root, tube, spark)
+	return tube
 end
 
 local function _buildBoombox(root)
@@ -895,8 +1097,8 @@ end
 -- ─── Registry ─────────────────────────────────────────────────────────────────
 
 local BUILDERS = {
-	-- BODY
-	["Stick"]          = _buildStick,
+	-- BODY (13): Barrel + Suitcase added in #89; Stick + Laptop removed in #88
+	["Barrel"]         = _buildBarrel,
 	["Cardboard Box"]  = _buildCardboardBox,
 	["Bamboo Raft"]    = _buildBambooRaft,
 	["Skateboard"]     = _buildSkateboard,
@@ -904,17 +1106,17 @@ local BUILDERS = {
 	["Shopping Cart"]  = _buildShoppingCart,
 	["Life Preserver"] = _buildLifePreserver,
 	["Kite"]           = _buildKite,
-	["Laptop"]         = _buildLaptop,
+	["Suitcase"]       = _buildSuitcase,
 	["Backpack"]       = _buildBackpack,
 	["Red Sofa"]       = _buildSofa,
 	["Microwave"]      = _buildMicrowave,
 	["Bathtub"]        = _buildBathtub,
-	-- ENGINE
-	["Shovel"]         = _buildShovel,
+	-- ENGINE (12): Fan + Wind Turbine added in #89; Shovel + Big Gear removed in #88
+	["Fan"]            = _buildFan,
 	["Flower"]         = _buildFlower,
 	["Pinwheel"]       = _buildPinwheel,
 	["Watering Can"]   = _buildWateringCan,
-	["Big Gear"]       = _buildBigGear,
+	["Wind Turbine"]   = _buildWindTurbine,
 	["Leaf Blower"]    = _buildLeafBlower,
 	["Spinning Top"]   = _buildSpinningTop,
 	["Propeller"]      = _buildPropeller,
@@ -922,13 +1124,14 @@ local BUILDERS = {
 	["Rocket"]         = _buildRocket,
 	["Cup Noodle"]     = _buildCupNoodle,
 	["Kettle"]         = _buildKettle,
-	-- SPECIAL
+	-- SPECIAL (13): Oil Can + Magnet + Firework added in #89; Leaves + Scarf + Rocket Boost removed in #88
+	["Oil Can"]        = _buildOilCan,
 	["Pizza"]          = _buildPizza,
 	["Toilet Paper"]   = _buildToiletPaper,
-	["Leaves"]         = _buildLeaves,
 	["Racing Flag"]    = _buildRacingFlag,
 	["Cactus"]         = _buildCactus,
-	["Scarf"]          = _buildScarf,
+	["Magnet"]         = _buildMagnet,
+	["Firework"]       = _buildFirework,
 	["Boombox"]        = _buildBoombox,
 	["Umbrella"]       = _buildUmbrella,
 	["Rubber Duck"]    = _buildRubberDuck,
@@ -939,7 +1142,8 @@ local BUILDERS = {
 
 -- ─── Public API ───────────────────────────────────────────────────────────────
 
--- Build a Model for the given item name.
+-- Build a Model for the given item name using the procedural Part system.
+-- Called by ItemModelPreloader only for items without a Blender mesh in ItemMeshes.
 -- Returns a Model with PrimaryPart set, parented to `parent`.
 function ItemModelBuilder.build(itemName, parent)
 	local builder = BUILDERS[itemName]

@@ -1,7 +1,7 @@
 -- ItemConfig.lua
--- Full stat definitions for all 37 items.
+-- Full stat definitions for all items.
 -- Stats are BASE values before rarity multiplier is applied.
--- Resolves: Issue #6, #62, #67
+-- Resolves: Issue #6, #62, #67, #88, #89
 
 -- Shared between server and client (lives in ReplicatedStorage/Shared).
 local Constants = require(script.Parent.Constants)
@@ -15,14 +15,15 @@ local ItemConfig = {}
 -- biomeBonus: optional multiplier applied when in that biome
 -- mobilityAffinity: items that work well in the MOBILITY slot for each biome
 
-ItemConfig["Stick"] = {
+-- Stick removed in #88: too weak (weight=1, grip=0.20), boring trap ability
+
+ItemConfig["Barrel"] = {
 	slotType       = "BODY",
 	rarity         = R.COMMON,
-	weight         = 1,
-	grip           = 0.20,
-	icon           = "🪄",
-	shape          = "stick",
-	biomeBonus     = { FOREST = 1.10 },  -- accel +10% in forest
+	weight         = 3,
+	grip           = 0.35,
+	icon           = "🪣",
+	shape          = "barrel",
 	mobilityAffinity = {},
 }
 
@@ -102,13 +103,15 @@ ItemConfig["Kite"] = {
 	mobilityAffinity = { SKY = true },
 }
 
-ItemConfig["Laptop"] = {
+-- Laptop removed in #88: vehicle body concept unclear; weight=8+grip=0.10 awkward; hack ability doesn't fit BODY
+
+ItemConfig["Suitcase"] = {
 	slotType       = "BODY",
 	rarity         = R.RARE,
-	weight         = 8,
-	grip           = 0.10,
-	icon           = "💻",
-	shape          = "laptop",
+	weight         = 9,
+	grip           = 0.60,
+	icon           = "🧳",
+	shape          = "suitcase",
 	mobilityAffinity = {},
 }
 
@@ -156,12 +159,14 @@ ItemConfig["Bathtub"] = {
 -- ─── ENGINE Items ─────────────────────────────────────────────────────────────
 -- power: 5–40 (drives speed + acceleration)
 
-ItemConfig["Shovel"] = {
+-- Shovel removed in #88: mislabeled (icon/shape=spoon), power=5 minimum, digMode too situational
+
+ItemConfig["Fan"] = {
 	slotType   = "ENGINE",
 	rarity     = R.COMMON,
-	power      = 5,
-	icon       = "🥄",
-	shape      = "spoon",
+	power      = 8,
+	icon       = "🌬️",
+	shape      = "fan",
 }
 
 ItemConfig["Flower"] = {
@@ -190,12 +195,15 @@ ItemConfig["Watering Can"] = {
 	biomeBonus = { OCEAN = 1.35 },
 }
 
-ItemConfig["Big Gear"] = {
+-- Big Gear removed in #88: power=8 too low for Uncommon, single gear doesn't read as engine visually
+
+ItemConfig["Wind Turbine"] = {
 	slotType   = "ENGINE",
 	rarity     = R.UNCOMMON,
-	power      = 8,     -- low raw power; strength is burst-overclock ability
-	icon       = "⚙️",
-	shape      = "gear",
+	power      = 15,
+	icon       = "🌪️",
+	shape      = "windturbine",
+	biomeBonus = { SKY = 1.35 },
 }
 
 ItemConfig["Leaf Blower"] = {
@@ -260,6 +268,17 @@ ItemConfig["Kettle"] = {
 -- ─── SPECIAL Items ────────────────────────────────────────────────────────────
 -- boost: 10–100 (passive boost duration in ms when boost key used)
 
+-- Leaves removed in #88: third track_drop trap alongside Pizza and Cactus — pure redundancy
+-- Scarf  removed in #88: boring Blender shape; steerHinder not communicated visually by a scarf
+
+ItemConfig["Oil Can"] = {
+	slotType   = "SPECIAL",
+	rarity     = R.COMMON,
+	boost      = 12,
+	icon       = "🛢️",
+	shape      = "oilcan",
+}
+
 ItemConfig["Pizza"] = {
 	slotType   = "SPECIAL",
 	rarity     = R.COMMON,
@@ -276,23 +295,6 @@ ItemConfig["Toilet Paper"] = {
 	shape      = "roll",
 }
 
-ItemConfig["Leaves"] = {
-	slotType   = "SPECIAL",
-	rarity     = R.COMMON,
-	boost      = 15,
-	icon       = "🍃",
-	shape      = "leaves",
-	biomeBonus = { FOREST = 1.20 },
-}
-
-ItemConfig["Racing Flag"] = {
-	slotType   = "SPECIAL",
-	rarity     = R.UNCOMMON,
-	boost      = 30,
-	icon       = "🏁",
-	shape      = "flag",
-}
-
 ItemConfig["Cactus"] = {
 	slotType   = "SPECIAL",
 	rarity     = R.UNCOMMON,
@@ -301,12 +303,20 @@ ItemConfig["Cactus"] = {
 	shape      = "cactus",
 }
 
-ItemConfig["Scarf"] = {
+ItemConfig["Magnet"] = {
 	slotType   = "SPECIAL",
 	rarity     = R.UNCOMMON,
-	boost      = 35,
-	icon       = "🧣",
-	shape      = "scarf",
+	boost      = 30,
+	icon       = "🧲",
+	shape      = "magnet",
+}
+
+ItemConfig["Racing Flag"] = {
+	slotType   = "SPECIAL",
+	rarity     = R.UNCOMMON,
+	boost      = 30,
+	icon       = "🏁",
+	shape      = "flag",
 }
 
 ItemConfig["Boombox"] = {
@@ -340,6 +350,15 @@ ItemConfig["Bubble Wrap"] = {
 	boost      = 55,
 	icon       = "💠",
 	shape      = "bubblewrap",
+}
+
+ItemConfig["Firework"] = {
+	slotType   = "SPECIAL",
+	rarity     = R.RARE,
+	boost      = 50,
+	icon       = "🎆",
+	shape      = "firework",
+	biomeBonus = { SKY = 1.20 },
 }
 
 ItemConfig["Balloon Bunch"] = {

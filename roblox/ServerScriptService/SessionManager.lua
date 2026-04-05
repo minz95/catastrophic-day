@@ -102,7 +102,8 @@ local function _onPlayerAdded(player)
 
 	print(string.format("[SessionManager] %s joined → skin #%d", player.Name, skinIndex))
 
-	-- If mid-game, send current phase immediately
+	-- If mid-game, send current phase immediately (handles rejoins, but client
+	-- scripts may not be connected yet on first join — handled by CharacterAdded below)
 	local phase = GameManager.getPhase()
 	if phase ~= Constants.PHASES.LOBBY then
 		RemoteEvents.PhaseChanged:FireClient(player, phase)
@@ -111,6 +112,20 @@ local function _onPlayerAdded(player)
 			RemoteEvents.BiomeSelected:FireClient(player, biome)
 		end
 	end
+
+	-- Re-send phase on every character load so StarterGui scripts (which run
+	-- after the character spawns) reliably receive the current phase.
+	-- Without this, clients miss PhaseChanged on first join if FARMING starts
+	-- before their character has loaded and connected event listeners.
+	player.CharacterAdded:Connect(function()
+		task.wait(0.5)  -- allow StarterGui LocalScripts to connect their OnClientEvent
+		local currentPhase = GameManager.getPhase()
+		RemoteEvents.PhaseChanged:FireClient(player, currentPhase)
+		local currentBiome = GameManager.getBiome()
+		if currentBiome then
+			RemoteEvents.BiomeSelected:FireClient(player, currentBiome)
+		end
+	end)
 end
 
 -- ─── Leave handler ────────────────────────────────────────────────────────────
