@@ -10,6 +10,8 @@ BiomeConfig["FOREST"] = {
 	mapPath        = "Workspace.Maps.ForestMap",
 	vehicleType    = "Car",
 	mobilitySlot   = "WHEELS",
+	raceStartZ     = 195,   -- just before track node[1] at Z=175
+	raceStartY     = 2,
 	skyboxId       = "rbxassetid://0",          -- TODO: replace with asset IDs
 	ambientSoundId = "rbxassetid://0",          -- TODO
 
@@ -37,6 +39,8 @@ BiomeConfig["OCEAN"] = {
 	mapPath        = "Workspace.Maps.OceanMap",
 	vehicleType    = "Boat",
 	mobilitySlot   = "SAIL",
+	raceStartZ     = 175,   -- just before dock node[1] at Z=155
+	raceStartY     = 3,     -- WATER_Y(0) + dock(1.5) + clearance(1.5)
 	skyboxId       = "rbxassetid://0",
 	ambientSoundId = "rbxassetid://0",
 
@@ -65,6 +69,8 @@ BiomeConfig["SKY"] = {
 	mapPath        = "Workspace.Maps.SkyMap",
 	vehicleType    = "FlyingVehicle",
 	mobilitySlot   = "WINGS",
+	raceStartZ     = 225,   -- just before platform[1] center at Z=200
+	raceStartY     = 84,    -- SKY_BASE_Y(80) + platform top(4)
 	skyboxId       = "rbxassetid://0",
 	ambientSoundId = "rbxassetid://0",
 

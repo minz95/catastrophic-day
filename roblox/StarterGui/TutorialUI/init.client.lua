@@ -241,7 +241,7 @@ end
 local refPanel = Instance.new("Frame")
 refPanel.Name             = "ReferencePanel"
 refPanel.Size             = UDim2.new(0, 440, 0, 0)
-refPanel.Position         = UDim2.new(0.5, -220, 0.5, 0)
+refPanel.Position         = UDim2.new(1, -460, 0.5, 0)
 refPanel.AnchorPoint      = Vector2.new(0, 0.5)
 refPanel.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
 refPanel.BackgroundTransparency = 0.05
