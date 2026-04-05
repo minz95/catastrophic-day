@@ -155,13 +155,18 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		if _nearestItem then
 			local idVal  = _nearestItem:FindFirstChild("ItemId")
 			local itemId = idVal and idVal.Value
-			if not itemId then return end
+			if not itemId then
+				warn("[FarmingClient] E pressed but ItemId missing on:", _nearestItem.Name)
+				return
+			end
 			local result = RemoteEvents.RequestPickup:InvokeServer(itemId)
+			print("[FarmingClient] RequestPickup result:", result)
 			if result == "ok" then
 				_hidePrompt()
 				_nearestItem = nil
 			elseif result == "contested" then
-				_contestItemId  = tostring(_nearestItem)
+				local idv = _nearestItem and _nearestItem:FindFirstChild("ItemId")
+				_contestItemId  = idv and idv.Value or tostring(_nearestItem)
 				_contestPresses = 1
 			else
 				_flashPromptDenied()
