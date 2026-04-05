@@ -128,18 +128,21 @@ for _, slotName in ipairs(SLOT_ORDER) do
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text             = SLOT_KR[slotName]
 	nameLbl.Font             = Enum.Font.Gotham
-	nameLbl.TextScaled       = true
+	nameLbl.TextScaled       = false
+	nameLbl.TextSize         = 11
 	nameLbl.TextColor3       = Color3.fromRGB(140, 140, 160)
 	nameLbl.Parent           = sf
 
 	local itemLbl = Instance.new("TextLabel")
 	itemLbl.Name             = "Item"
-	itemLbl.Size             = UDim2.new(1, 0, 0.68, 0)
-	itemLbl.Position         = UDim2.new(0, 0, 0.32, 0)
+	itemLbl.Size             = UDim2.new(1, -4, 0.68, 0)
+	itemLbl.Position         = UDim2.new(0, 2, 0.32, 0)
 	itemLbl.BackgroundTransparency = 1
 	itemLbl.Text             = "—"
 	itemLbl.Font             = Enum.Font.GothamBold
-	itemLbl.TextScaled       = true
+	itemLbl.TextScaled       = false
+	itemLbl.TextSize         = 10
+	itemLbl.TextWrapped      = true
 	itemLbl.TextColor3       = Color3.fromRGB(100, 100, 120)
 	itemLbl.Parent           = sf
 
@@ -225,7 +228,9 @@ local function _refreshDisplay()
 		lbl.Position         = UDim2.new(0, 0, 0.52, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text             = itemName
-		lbl.TextScaled       = true
+		lbl.TextScaled       = false
+		lbl.TextSize         = 9
+		lbl.TextWrapped      = true
 		lbl.Font             = Enum.Font.Gotham
 		lbl.TextColor3       = RARITY_COLOUR[(cfg and cfg.rarity) or "Common"]
 		lbl.Parent           = sf
@@ -293,6 +298,78 @@ local function _startTimer()
 	end)
 end
 
+-- ─── Slot guide overlay (right side, auto-fades) ─────────────────────────────
+
+local guideBg = Instance.new("Frame")
+guideBg.Name                  = "SlotGuide"
+guideBg.Size                  = UDim2.new(0, 180, 0, 200)
+guideBg.Position               = UDim2.new(1, 20, 0.5, -100)  -- start off-screen right
+guideBg.BackgroundColor3       = Color3.fromRGB(10, 10, 22)
+guideBg.BackgroundTransparency = 0.15
+guideBg.BorderSizePixel        = 0
+guideBg.Visible                = false
+guideBg.Parent                 = screen
+local _gc = Instance.new("UICorner"); _gc.CornerRadius = UDim.new(0, 12); _gc.Parent = guideBg
+
+local guideTitle = Instance.new("TextLabel")
+guideTitle.Size                = UDim2.new(1, -12, 0, 26)
+guideTitle.Position            = UDim2.new(0, 6, 0, 6)
+guideTitle.BackgroundTransparency = 1
+guideTitle.Text                = "슬롯 가이드"
+guideTitle.Font                = Enum.Font.GothamBold
+guideTitle.TextScaled          = false
+guideTitle.TextSize            = 13
+guideTitle.TextColor3          = Color3.fromRGB(255, 200, 60)
+guideTitle.TextXAlignment      = Enum.TextXAlignment.Left
+guideTitle.Parent              = guideBg
+
+local GUIDE_ROWS = {
+	{ slot = "BODY",     hint = "몸체 — 무게·안정성" },
+	{ slot = "ENGINE",   hint = "엔진 — 파워·가속력" },
+	{ slot = "SPECIAL",  hint = "특수 — 부스트" },
+	{ slot = "MOBILITY", hint = "이동 — 바이옴 특화" },
+	{ slot = "HEAD",     hint = "앞 — 충돌 패시브" },
+	{ slot = "TAIL",     hint = "뒤 — 후방 패시브" },
+}
+for i, row in ipairs(GUIDE_ROWS) do
+	local r = Instance.new("TextLabel")
+	r.Size                  = UDim2.new(1, -12, 0, 24)
+	r.Position              = UDim2.new(0, 6, 0, 26 + (i - 1) * 26)
+	r.BackgroundTransparency = 1
+	r.Text                  = row.hint
+	r.Font                  = Enum.Font.Gotham
+	r.TextScaled            = false
+	r.TextSize              = 11
+	r.TextColor3            = Color3.fromRGB(200, 200, 220)
+	r.TextXAlignment        = Enum.TextXAlignment.Left
+	r.Parent                = guideBg
+end
+
+local TweenService = game:GetService("TweenService")
+
+local function _showGuide()
+	guideBg.Position = UDim2.new(1, 20, 0.5, -100)
+	guideBg.BackgroundTransparency = 0.15
+	guideBg.Visible  = true
+	-- Slide in
+	TweenService:Create(guideBg, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(1, -196, 0.5, -100)
+	}):Play()
+	-- Fade out after 5 seconds
+	task.delay(5, function()
+		if not screen.Enabled then return end
+		TweenService:Create(guideBg, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1
+		}):Play()
+		for _, child in ipairs(guideBg:GetChildren()) do
+			if child:IsA("TextLabel") then
+				TweenService:Create(child, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+			end
+		end
+		task.delay(0.45, function() guideBg.Visible = false end)
+	end)
+end
+
 -- ─── Phase gate ───────────────────────────────────────────────────────────────
 
 RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
@@ -303,6 +380,7 @@ RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
 		_refreshDisplay()
 		screen.Enabled = true
 		_startTimer()
+		_showGuide()
 	else
 		screen.Enabled = false
 		if _runConn then _runConn:Disconnect(); _runConn = nil end
