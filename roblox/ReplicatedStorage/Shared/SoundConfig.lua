@@ -81,10 +81,10 @@ SoundConfig.SFX = {
 	CRAFT_COMPLETE      = { id = "rbxassetid://6026984224", volume = 0.9, pitch = 1.0  }, -- satisfying chime
 
 	-- Racing
-	BOOST_ACTIVATE      = { id = "rbxassetid://3714463173", volume = 0.8, pitch = 1.0  }, -- speed whoosh
-	BOOST_PAD           = { id = "rbxassetid://3714463173", volume = 0.7, pitch = 1.3  },
+	BOOST_ACTIVATE      = { id = "", volume = 0.8, pitch = 1.0  }, -- speed whoosh
+	BOOST_PAD           = { id = "", volume = 0.7, pitch = 1.3  },
 	DRIFT_START         = { id = "rbxassetid://6895079555", volume = 0.6, pitch = 0.9  }, -- air scrub
-	DRIFT_SLINGSHOT     = { id = "rbxassetid://3714463173", volume = 0.8, pitch = 1.4  }, -- fast sling
+	DRIFT_SLINGSHOT     = { id = "", volume = 0.8, pitch = 1.4  }, -- fast sling
 	COLLISION           = { id = "rbxassetid://5800013125", volume = 0.9, pitch = 0.8  }, -- heavy thud
 	MUD_ENTER           = { id = "rbxassetid://5801167317", volume = 0.6, pitch = 0.7  }, -- wet slap
 	UPDRAFT_ENTER       = { id = "rbxassetid://6895079555", volume = 0.5, pitch = 1.2  }, -- rising air
@@ -95,10 +95,10 @@ SoundConfig.SFX = {
 
 	-- Countdown
 	COUNTDOWN_BEEP      = { id = "rbxassetid://6026984224", volume = 0.9, pitch = 1.0  },
-	COUNTDOWN_GO        = { id = "rbxassetid://3714463173", volume = 1.0, pitch = 1.3  }, -- GO! punch
+	COUNTDOWN_GO        = { id = "", volume = 1.0, pitch = 1.3  }, -- GO! punch
 
 	-- Abilities (category-based; SoundClient picks these by ABILITY_SFX key)
-	ABILITY_SPEED       = { id = "rbxassetid://3714463173", volume = 0.7, pitch = 1.2  }, -- fast laser
+	ABILITY_SPEED       = { id = "", volume = 0.7, pitch = 1.2  }, -- fast laser
 	ABILITY_SHIELD      = { id = "rbxassetid://4947766283", volume = 0.7, pitch = 0.9  }, -- shield bubble
 	ABILITY_OBSTACLE    = { id = "rbxassetid://5801167317", volume = 0.8, pitch = 0.8  }, -- drop/thud
 	ABILITY_HACK        = { id = "rbxassetid://6026984224", volume = 0.8, pitch = 0.6  }, -- low tech beep

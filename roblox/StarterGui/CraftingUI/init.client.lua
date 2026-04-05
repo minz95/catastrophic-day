@@ -25,8 +25,8 @@ screen.Parent         = LocalPlayer.PlayerGui
 
 local panel = Instance.new("Frame")
 panel.Name                  = "Panel"
-panel.Size                  = UDim2.new(0, 480, 0, 430)
-panel.Position              = UDim2.new(0, 20, 0.5, -215)
+panel.Size                  = UDim2.new(0, 500, 0, 430)
+panel.Position              = UDim2.new(0.5, -250, 0.5, -215)
 panel.BackgroundColor3      = Color3.fromRGB(10, 10, 22)
 panel.BackgroundTransparency = 0.12
 panel.BorderSizePixel       = 0
@@ -84,6 +84,7 @@ invFrame.Name                = "Inventory"
 invFrame.Size                = UDim2.new(1, -20, 0, 66)
 invFrame.Position            = UDim2.new(0, 10, 0, 122)
 invFrame.BackgroundTransparency = 1
+invFrame.ClipsDescendants    = true
 invFrame.Parent              = panel
 
 local _il = Instance.new("UIListLayout")
@@ -101,6 +102,7 @@ slotsFrame.Name              = "Slots"
 slotsFrame.Size              = UDim2.new(1, -20, 0, 84)
 slotsFrame.Position          = UDim2.new(0, 10, 0, 226)
 slotsFrame.BackgroundTransparency = 1
+slotsFrame.ClipsDescendants  = true
 slotsFrame.Parent            = panel
 
 local _sl = Instance.new("UIListLayout")
@@ -115,7 +117,7 @@ local slotItemLbls = {}  -- { [slotName] = TextLabel }
 
 for _, slotName in ipairs(SLOT_ORDER) do
 	local sf = Instance.new("Frame")
-	sf.Size              = UDim2.new(0, 76, 1, 0)
+	sf.Size              = UDim2.new(0, 74, 1, 0)
 	sf.BackgroundColor3  = Color3.fromRGB(28, 28, 48)
 	sf.BorderSizePixel   = 0
 	sf.Parent            = slotsFrame
