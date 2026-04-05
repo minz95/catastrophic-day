@@ -19,7 +19,7 @@ SoundConfig.BGM = {
 	},
 	FARMING = {
 		FOREST = { id = "rbxassetid://1843566374", volume = 0.45, looped = true },  -- [PLACEHOLDER] peaceful nature
-		OCEAN  = { id = "rbxassetid://1843506494", volume = 0.45, looped = true },  -- [PLACEHOLDER] breezy coastal
+		OCEAN  = { id = "rbxassetid://1843566374", volume = 0.45, looped = true },  -- [PLACEHOLDER] breezy coastal (temp: reuse forest bgm until valid ocean id found)
 		SKY    = { id = "rbxassetid://1838793556", volume = 0.45, looped = true },  -- [PLACEHOLDER] airy ambient
 	},
 	CRAFTING = {
