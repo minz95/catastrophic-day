@@ -40,15 +40,15 @@ SoundConfig.BGM = {
 
 SoundConfig.AMBIENCE = {
 	FOREST = {
-		{ id = "rbxassetid://9125364642",  volume = 0.3,  looped = true },  -- birds chirping
-		{ id = "rbxassetid://9125402785",  volume = 0.2,  looped = true },  -- wind through leaves
+		{ id = "",  volume = 0.3,  looped = true },  -- [TODO] birds chirping
+		{ id = "",  volume = 0.2,  looped = true },  -- [TODO] wind through leaves
 	},
 	OCEAN = {
 		{ id = "",  volume = 0.4,  looped = true },  -- [TODO] ocean waves loop
 		{ id = "",  volume = 0.15, looped = true },  -- [TODO] distant seagulls
 	},
 	SKY = {
-		{ id = "rbxassetid://9125402785",  volume = 0.3,  looped = true },  -- high-altitude wind
+		{ id = "",  volume = 0.3,  looped = true },  -- [TODO] high-altitude wind
 	},
 }
 
