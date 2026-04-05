@@ -150,13 +150,26 @@ GameManager.onPhaseChanged(function(phase, biome)
 				if model then
 					model.Parent = game.Workspace
 					SessionManager.setVehicle(player, model, stats)
-					RemoteEvents.VehicleSpawned:FireAllClients(player.UserId, model)
 
-					-- Seat player
+					-- Give the model one frame to replicate before firing the client
+					-- event and before calling :Sit(), otherwise the client receives
+					-- a model reference it hasn't loaded yet and seat physics are wrong.
+					task.wait()
+
 					local seat = model:FindFirstChildWhichIsA("VehicleSeat", true)
-					if seat and player.Character then
-						seat:Sit(player.Character:FindFirstChild("Humanoid"))
+					if seat then
+						print(string.format("[CraftingManager] Vehicle for %s spawned at %s | seat=%s",
+							player.Name, tostring(model.PrimaryPart and model.PrimaryPart.Position), tostring(seat)))
+						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
+						if player.Character then
+							seat:Sit(player.Character:FindFirstChild("Humanoid"))
+						end
+					else
+						warn("[CraftingManager] No VehicleSeat found in vehicle for", player.Name)
+						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
 					end
+				else
+					warn("[CraftingManager] VehicleBuilder.build returned nil for", player.Name)
 				end
 			end
 		end)
