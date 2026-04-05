@@ -2,6 +2,8 @@
 -- Proximity detection, pickup prompt, contest UI, and steal prompt.
 -- Resolves: Issue #18, #64
 
+print("[FarmingClient] LocalScript started")
+
 local Players           = game:GetService("Players")
 local UserInputService  = game:GetService("UserInputService")
 local RunService        = game:GetService("RunService")
