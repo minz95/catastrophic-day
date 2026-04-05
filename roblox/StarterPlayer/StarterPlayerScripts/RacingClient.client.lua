@@ -70,6 +70,11 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if k == "E" then
 		_triggerAbility()
 	end
+
+	-- Manual respawn (R key) — useful when stuck off-track
+	if input.KeyCode == Enum.KeyCode.R then
+		RemoteEvents.RequestRespawn:InvokeServer()
+	end
 end)
 
 UserInputService.InputEnded:Connect(function(input)

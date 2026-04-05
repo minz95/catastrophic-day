@@ -205,24 +205,77 @@ local function _setupUpdraftZones()
 	end
 end
 
--- ─── Kill plane (SKY) ─────────────────────────────────────────────────────────
+-- ─── Respawn helper ───────────────────────────────────────────────────────────
 
-local function _setupKillPlane(kilY)
+-- Returns the spawn Y for the current biome (vehicle rests at this height).
+local function _spawnY()
+	local cfg = _biome and BiomeConfig[_biome]
+	return (cfg and cfg.raceStartY) or 2
+end
+
+-- Teleports the vehicle back onto the track at its current progress, with a
+-- screen flash. Safe to call from server Heartbeat or a RemoteFunction.
+local function _respawnVehicle(player)
+	local pdata = SessionManager.getData(player)
+	local vehicle = pdata and pdata.vehicleModel
+	if not vehicle or not vehicle.PrimaryPart then return end
+
+	local primary = vehicle.PrimaryPart
+	local progress = _trackProgress(vehicle)
+	-- Step back 30 studs so the player has room to regain speed.
+	local safeZ = TRACK_START_Z - math.max(progress - 30, 0)
+	local y     = _spawnY() + 3   -- a little above surface to avoid clipping
+
+	-- Briefly anchor so the vehicle doesn't fall while being moved.
+	primary.Anchored = true
+	vehicle:SetPrimaryPartCFrame(CFrame.new(0, y, safeZ))
+	-- Zero out any lingering velocity.
+	primary.AssemblyLinearVelocity  = Vector3.zero
+	primary.AssemblyAngularVelocity = Vector3.zero
+	task.wait(0.1)
+	primary.Anchored = false
+
+	RemoteEvents.ScreenEffect:FireClient(player, "respawn", {})
+end
+
+-- ─── Kill plane (all biomes) ──────────────────────────────────────────────────
+
+local function _setupKillPlane()
+	local cfg   = _biome and BiomeConfig[_biome]
+	-- SKY has an explicit killPlaneY; for ground/ocean use a generous floor.
+	local killY = (cfg and cfg.killPlaneY) or -50
+
+	local _respawnCooldown = {}   -- { [userId] = expireTick } prevents rapid re-triggers
+
 	RunService.Heartbeat:Connect(function()
-		if not _active or _biome ~= "SKY" then return end
+		if not _active then return end
 		for _, player in ipairs(Players:GetPlayers()) do
 			local pdata = SessionManager.getData(player)
 			local vehicle = pdata and pdata.vehicleModel
 			if not vehicle or not vehicle.PrimaryPart then continue end
-			if vehicle.PrimaryPart.Position.Y < kilY then
-				-- Respawn at last safe Z position (simplified: reset to track X=0)
-				local progress = _trackProgress(vehicle)
-				local safeZ    = TRACK_START_Z - math.max(progress - 50, 0)
-				vehicle:SetPrimaryPartCFrame(CFrame.new(0, 60, safeZ))
-				RemoteEvents.ScreenEffect:FireClient(player, "respawn", {})
+			if vehicle.PrimaryPart.Position.Y < killY then
+				local now = tick()
+				if (_respawnCooldown[player.UserId] or 0) > now then continue end
+				_respawnCooldown[player.UserId] = now + 3   -- 3s cooldown
+				_respawnVehicle(player)
 			end
 		end
 	end)
+end
+
+-- ─── Manual respawn (R key from client) ───────────────────────────────────────
+
+local _manualRespawnCooldown = {}   -- { [userId] = expireTick }
+
+RemoteEvents.RequestRespawn.OnServerInvoke = function(player)
+	if not _active then return "denied: not racing" end
+	local now = tick()
+	if (_manualRespawnCooldown[player.UserId] or 0) > now then
+		return "denied: cooldown"
+	end
+	_manualRespawnCooldown[player.UserId] = now + 5   -- 5s between manual resets
+	_respawnVehicle(player)
+	return "ok"
 end
 
 -- ─── Obstacle collision (all biomes) ─────────────────────────────────────────
@@ -424,9 +477,9 @@ GameManager.onPhaseChanged(function(phase, biome)
 			_buoyancyLoop()
 		elseif biome == "SKY" then
 			_setupUpdraftZones()
-			local kilY = BiomeConfig.get("SKY").killPlaneY or -200
-			_setupKillPlane(kilY)
 		end
+
+		_setupKillPlane()   -- applies to all biomes
 
 		_setupFinishLine()
 		_startPositionSync()
