@@ -154,6 +154,15 @@ GameManager.onPhaseChanged(function(phase, biome)
 					if primary then primary.Anchored = true end
 
 					model.Parent = game.Workspace
+
+					-- Update SKY hover target to actual spawn Y after parenting
+					if biome == "SKY" and primary then
+						local hoverPos = primary:FindFirstChild("HoverPosition")
+						if hoverPos then
+							hoverPos.Position = primary.Position
+						end
+					end
+
 					SessionManager.setVehicle(player, model, stats)
 
 					-- One frame for replication before firing the client event.

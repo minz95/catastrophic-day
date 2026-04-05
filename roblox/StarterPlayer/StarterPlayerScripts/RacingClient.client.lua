@@ -165,13 +165,31 @@ end
 -- which requires knowing Shift state and current velocity.
 
 local function _driveLoop()
-	if not _seat then return end
+	if not _vehicle or not _vehicle.PrimaryPart then return end
+	local primary = _vehicle.PrimaryPart
+	local bv  = primary:FindFirstChild("DriveVelocity")
+	local bav = primary:FindFirstChild("DriveAngular")
+	if not bv or not bav then return end
+
+	local throttle = 0
+	if _keys.W or _keys.Up   then throttle =  1 end
+	if _keys.S or _keys.Down then throttle = -0.5 end
+
+	local steer = 0
+	if _keys.A or _keys.Left  then steer =  1 end
+	if _keys.D or _keys.Right then steer = -1 end
+
+	local maxSpeed  = _seat and _seat.MaxSpeed  or 40
+	local turnSpeed = _seat and _seat.TurnSpeed or 1
+
+	local forward = primary.CFrame.LookVector
+	bv.Velocity = forward * throttle * maxSpeed
+	bav.AngularVelocity = Vector3.new(0, steer * turnSpeed, 0)
 
 	-- Drift entry: Shift + turning at speed
 	if _keys.Shift and _isTurning() and not _drifting then
-		local vel = _vehicle and _vehicle.PrimaryPart and
-			_vehicle.PrimaryPart.AssemblyLinearVelocity.Magnitude or 0
-		if vel > (_seat.MaxSpeed * 0.5) then
+		local vel = primary.AssemblyLinearVelocity.Magnitude
+		if vel > (maxSpeed * 0.5) then
 			_enterDrift()
 		end
 	end

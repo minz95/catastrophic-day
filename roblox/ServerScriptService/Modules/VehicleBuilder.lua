@@ -465,6 +465,36 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 	-- Visual flair from stats
 	_applyStatVisuals(model, stats, palette)
 
+	-- ── Physics drive constraints ─────────────────────────────────────────────
+	-- Controlled by RacingClient (LocalScript on the owning player).
+	-- MaxForce Y=0 keeps ground vehicles from flying; SKY uses separate hover.
+
+	local driveVel = Instance.new("BodyVelocity")
+	driveVel.Name     = "DriveVelocity"
+	driveVel.Velocity = Vector3.zero
+	driveVel.MaxForce = Vector3.new(1e4, 0, 1e4)
+	driveVel.P        = 1e4
+	driveVel.Parent   = primaryPart
+
+	local driveAng = Instance.new("BodyAngularVelocity")
+	driveAng.Name            = "DriveAngular"
+	driveAng.AngularVelocity = Vector3.zero
+	driveAng.MaxTorque       = Vector3.new(0, 1e4, 0)
+	driveAng.P               = 1e4
+	driveAng.Parent          = primaryPart
+
+	-- SKY flyer: BodyPosition holds altitude so the flyer hovers at spawn Y.
+	-- MaxForce only in Y so horizontal BodyVelocity is unaffected.
+	if biome == "SKY" then
+		local hover = Instance.new("BodyPosition")
+		hover.Name     = "HoverPosition"
+		hover.Position = spawnCFrame.Position        -- set to spawn altitude; updated after parenting
+		hover.MaxForce = Vector3.new(0, 1e6, 0)
+		hover.D        = 400
+		hover.P        = 1e4
+		hover.Parent   = primaryPart
+	end
+
 	-- Place in world
 	model:SetPrimaryPartCFrame(spawnCFrame)
 
