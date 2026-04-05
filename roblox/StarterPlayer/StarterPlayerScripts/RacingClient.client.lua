@@ -128,10 +128,6 @@ end
 
 local _driftGripBackup = nil
 
-local function _isTurning()
-	return (_keys.A or _keys.Left) or (_keys.D or _keys.Right)
-end
-
 local function _enterDrift()
 	if not _seat or _drifting then return end
 	_drifting       = true
@@ -160,45 +156,51 @@ function _exitDrift()
 end
 
 -- ─── Vehicle drive loop ───────────────────────────────────────────────────────
--- Basic throttle/steer is handled by Roblox's built-in VehicleSeat controller
--- automatically when the player is seated. This loop only manages drift entry,
--- which requires knowing Shift state and current velocity.
+-- FOREST/OCEAN: VehicleSeat built-in handles throttle/steer. Loop detects drift.
+-- SKY: No ground contact → manually drive via BodyVelocity each frame.
 
 local function _driveLoop()
 	if not _vehicle or not _vehicle.PrimaryPart then return end
 	local primary = _vehicle.PrimaryPart
-	local bv  = primary:FindFirstChild("DriveVelocity")
-	local bav = primary:FindFirstChild("DriveAngular")
-	if not bv or not bav then return end
 
-	local throttle = 0
-	if _keys.W or _keys.Up   then throttle =  1 end
-	if _keys.S or _keys.Down then throttle = -0.5 end
+	if _biome == "SKY" then
+		-- SKY: VehicleSeat has no ground contact, so drive manually via BodyVelocity.
+		local bv  = primary:FindFirstChild("DriveVelocity")
+		local bav = primary:FindFirstChild("DriveAngular")
+		if not bv or not bav then return end
 
-	local steer = 0
-	if _keys.A or _keys.Left  then steer =  1 end
-	if _keys.D or _keys.Right then steer = -1 end
+		local throttle = 0
+		if _keys.W or _keys.Up   then throttle =  1 end
+		if _keys.S or _keys.Down then throttle = -0.5 end
 
-	local maxSpeed  = _seat and _seat.MaxSpeed  or 40
-	local turnSpeed = _seat and _seat.TurnSpeed or 1
+		local steer = 0
+		if _keys.A or _keys.Left  then steer =  1 end
+		if _keys.D or _keys.Right then steer = -1 end
 
-	local forward = primary.CFrame.LookVector
-	bv.Velocity = forward * throttle * maxSpeed
-	bav.AngularVelocity = Vector3.new(0, steer * turnSpeed, 0)
+		local maxSpeed  = _seat and _seat.MaxSpeed  or 60
+		local turnSpeed = math.min(_seat and _seat.TurnSpeed or 1, 1.5)  -- cap so it doesn't spin
 
-	-- Keep UprightGyro target aligned to vehicle's current Y rotation so it
-	-- only resists X/Z tilt and never fights the steering we just applied.
-	local gyro = primary:FindFirstChild("UprightGyro")
-	if gyro then
-		local _, currentY, _ = primary.CFrame:ToEulerAnglesYXZ()
-		gyro.CFrame = CFrame.fromEulerAnglesYXZ(0, currentY, 0)
-	end
+		local forward = primary.CFrame.LookVector
+		bv.Velocity = forward * throttle * maxSpeed
+		bav.AngularVelocity = Vector3.new(0, steer * turnSpeed, 0)
 
-	-- Drift entry: Shift + turning at speed
-	if _keys.Shift and _isTurning() and not _drifting then
-		local vel = primary.AssemblyLinearVelocity.Magnitude
-		if vel > (maxSpeed * 0.5) then
-			_enterDrift()
+		-- Keep UprightGyro tracking current Y so it only fights X/Z tilt.
+		local gyro = primary:FindFirstChild("UprightGyro")
+		if gyro then
+			local _, currentY, _ = primary.CFrame:ToEulerAnglesYXZ()
+			gyro.CFrame = CFrame.fromEulerAnglesYXZ(0, currentY, 0)
+		end
+
+	else
+		-- FOREST/OCEAN: VehicleSeat's built-in Torque/TurnSpeed drive the vehicle.
+		-- This loop only detects drift entry.
+		if not _seat then return end
+		local steerFloat = _seat.SteerFloat  -- set automatically by Roblox from A/D input
+		if _keys.Shift and math.abs(steerFloat) > 0.3 and not _drifting then
+			local vel = primary.AssemblyLinearVelocity.Magnitude
+			if vel > _seat.MaxSpeed * 0.5 then
+				_enterDrift()
+			end
 		end
 	end
 end
