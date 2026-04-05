@@ -13,27 +13,27 @@ local SoundConfig = {}
 
 SoundConfig.BGM = {
 	LOBBY = {
-		id     = "rbxassetid://1843326388",   -- [PLACEHOLDER] upbeat waiting music
+		id     = "",   -- [TODO] replace with valid audio asset id
 		volume = 0.4,
 		looped = true,
 	},
 	FARMING = {
-		FOREST = { id = "rbxassetid://1843566374", volume = 0.45, looped = true },  -- [PLACEHOLDER] peaceful nature
-		OCEAN  = { id = "rbxassetid://1843566374", volume = 0.45, looped = true },  -- [PLACEHOLDER] breezy coastal (temp: reuse forest bgm until valid ocean id found)
-		SKY    = { id = "rbxassetid://1838793556", volume = 0.45, looped = true },  -- [PLACEHOLDER] airy ambient
+		FOREST = { id = "", volume = 0.45, looped = true },  -- [TODO] peaceful nature
+		OCEAN  = { id = "", volume = 0.45, looped = true },  -- [TODO] breezy coastal
+		SKY    = { id = "", volume = 0.45, looped = true },  -- [TODO] airy ambient
 	},
 	CRAFTING = {
-		id     = "rbxassetid://1842846423",   -- [PLACEHOLDER] focused workshop feel
+		id     = "",   -- [TODO] focused workshop feel
 		volume = 0.35,
 		looped = true,
 	},
 	RACING = {
-		FOREST = { id = "rbxassetid://1837686621", volume = 0.55, looped = true },  -- [PLACEHOLDER] fast forest chase
-		OCEAN  = { id = "rbxassetid://1837723532", volume = 0.55, looped = true },  -- [PLACEHOLDER] high-energy surf
-		SKY    = { id = "rbxassetid://1837657304", volume = 0.55, looped = true },  -- [PLACEHOLDER] epic sky battle
+		FOREST = { id = "", volume = 0.55, looped = true },  -- [TODO] fast forest chase
+		OCEAN  = { id = "", volume = 0.55, looped = true },  -- [TODO] high-energy surf
+		SKY    = { id = "", volume = 0.55, looped = true },  -- [TODO] epic sky battle
 	},
-	RESULTS_WIN  = { id = "rbxassetid://1837628284", volume = 0.6, looped = false }, -- [PLACEHOLDER] victory fanfare
-	RESULTS_LOSE = { id = "rbxassetid://1837612048", volume = 0.5, looped = false }, -- [PLACEHOLDER] consolation jingle
+	RESULTS_WIN  = { id = "", volume = 0.6, looped = false }, -- [TODO] victory fanfare
+	RESULTS_LOSE = { id = "", volume = 0.5, looped = false }, -- [TODO] consolation jingle
 }
 
 -- ─── Biome Ambience ───────────────────────────────────────────────────────────
@@ -44,8 +44,8 @@ SoundConfig.AMBIENCE = {
 		{ id = "rbxassetid://9125402785",  volume = 0.2,  looped = true },  -- wind through leaves
 	},
 	OCEAN = {
-		{ id = "rbxassetid://9125467855",  volume = 0.4,  looped = true },  -- [PLACEHOLDER] ocean waves loop
-		{ id = "rbxassetid://9125489210",  volume = 0.15, looped = true },  -- [PLACEHOLDER] distant seagulls
+		{ id = "",  volume = 0.4,  looped = true },  -- [TODO] ocean waves loop
+		{ id = "",  volume = 0.15, looped = true },  -- [TODO] distant seagulls
 	},
 	SKY = {
 		{ id = "rbxassetid://9125402785",  volume = 0.3,  looped = true },  -- high-altitude wind

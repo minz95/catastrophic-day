@@ -46,6 +46,7 @@ local BIOME_THEME = {
 
 local _currentBiome   = nil
 local _origTransp     = {}   -- { [guiName] = { [childName] = originalTransparency } }
+local _intendedEnabled = {}  -- { [guiName] = bool } — guards against stale task.delay disables
 
 -- ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ end
 local function _setEnabled(guiName, enabled, fadeDuration)
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if not gui then return end
+	_intendedEnabled[guiName] = enabled
 	_cacheTransparencies(guiName, gui)
 
 	if fadeDuration and fadeDuration > 0 then
@@ -74,7 +76,12 @@ local function _setEnabled(guiName, enabled, fadeDuration)
 			end
 		end
 		if not enabled then
-			task.delay(fadeDuration, function() gui.Enabled = false end)
+			task.delay(fadeDuration, function()
+				-- Only disable if intent hasn't changed to 'show' in the meantime
+				if _intendedEnabled[guiName] == false then
+					gui.Enabled = false
+				end
+			end)
 		else
 			gui.Enabled = true
 		end
