@@ -74,11 +74,11 @@ function VehicleStats.calculate(bodyCfg, engineCfg, specialCfg, biome)
 	local bBio  = biomeScale(body,    biome)
 	local eBio  = biomeScale(engine,  biome)
 
-	-- Effective values after rarity + biome
-	local effectivePower  = engine.power  * eMult * eBio
-	local effectiveWeight = body.weight   * bMult          -- weight is a cost, not buffed by rarity
-	local effectiveGrip   = body.grip     * bMult * bBio
-	local effectiveBoost  = special.boost * sMult
+	-- Effective values after rarity + biome (guard against wrong-slot items missing fields)
+	local effectivePower  = (engine.power  or 10) * eMult * eBio
+	local effectiveWeight = (body.weight   or 8)  * bMult          -- weight is a cost, not buffed by rarity
+	local effectiveGrip   = (body.grip     or 0.5) * bMult * bBio
+	local effectiveBoost  = (special.boost or 10) * sMult
 
 	-- Core stat formulas
 	local speed = B.BASE_SPEED
