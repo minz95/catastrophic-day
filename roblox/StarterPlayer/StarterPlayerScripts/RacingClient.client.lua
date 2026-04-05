@@ -55,10 +55,10 @@ local KEY_MAP = {
 }
 
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
 	local k = KEY_MAP[input.KeyCode]
-	if k then _keys[k] = true end
+	if k then _keys[k] = true end  -- always track, even when VehicleSeat marks input as processed
 
+	if processed then return end
 	if not _active then return end
 
 	-- Boost
@@ -75,6 +75,8 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	local k = KEY_MAP[input.KeyCode]
 	if k then _keys[k] = false end
+
+	if not _active then return end
 
 	-- End drift when Shift released
 	if k == "Shift" and _drifting then
