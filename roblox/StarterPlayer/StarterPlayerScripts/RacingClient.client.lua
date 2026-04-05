@@ -186,6 +186,14 @@ local function _driveLoop()
 	bv.Velocity = forward * throttle * maxSpeed
 	bav.AngularVelocity = Vector3.new(0, steer * turnSpeed, 0)
 
+	-- Keep UprightGyro target aligned to vehicle's current Y rotation so it
+	-- only resists X/Z tilt and never fights the steering we just applied.
+	local gyro = primary:FindFirstChild("UprightGyro")
+	if gyro then
+		local _, currentY, _ = primary.CFrame:ToEulerAnglesYXZ()
+		gyro.CFrame = CFrame.fromEulerAnglesYXZ(0, currentY, 0)
+	end
+
 	-- Drift entry: Shift + turning at speed
 	if _keys.Shift and _isTurning() and not _drifting then
 		local vel = primary.AssemblyLinearVelocity.Magnitude

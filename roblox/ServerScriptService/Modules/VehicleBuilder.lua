@@ -483,6 +483,16 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 	driveAng.P               = 1e4
 	driveAng.Parent          = primaryPart
 
+	-- BodyGyro: resists X/Z tilting so the vehicle stays upright.
+	-- MaxTorque Y=0 so DriveAngular still controls steering freely.
+	local gyro = Instance.new("BodyGyro")
+	gyro.Name      = "UprightGyro"
+	gyro.CFrame    = CFrame.new()   -- target: world-upright
+	gyro.MaxTorque = Vector3.new(1e5, 0, 1e5)
+	gyro.D         = 200
+	gyro.P         = 1e4
+	gyro.Parent    = primaryPart
+
 	-- SKY flyer: BodyPosition holds altitude so the flyer hovers at spawn Y.
 	-- MaxForce only in Y so horizontal BodyVelocity is unaffected.
 	if biome == "SKY" then
@@ -490,8 +500,8 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 		hover.Name     = "HoverPosition"
 		hover.Position = spawnCFrame.Position        -- set to spawn altitude; updated after parenting
 		hover.MaxForce = Vector3.new(0, 1e6, 0)
-		hover.D        = 400
-		hover.P        = 1e4
+		hover.D        = 500
+		hover.P        = 5e4
 		hover.Parent   = primaryPart
 	end
 
