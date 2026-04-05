@@ -44,19 +44,32 @@ local BIOME_THEME = {
 	},
 }
 
-local _currentBiome = nil
+local _currentBiome   = nil
+local _origTransp     = {}   -- { [guiName] = { [childName] = originalTransparency } }
 
 -- ─── Helpers ─────────────────────────────────────────────────────────────────
+
+local function _cacheTransparencies(guiName, gui)
+	if _origTransp[guiName] then return end
+	_origTransp[guiName] = {}
+	for _, child in ipairs(gui:GetChildren()) do
+		if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+			_origTransp[guiName][child.Name] = child.BackgroundTransparency
+		end
+	end
+end
 
 local function _setEnabled(guiName, enabled, fadeDuration)
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if not gui then return end
+	_cacheTransparencies(guiName, gui)
+
 	if fadeDuration and fadeDuration > 0 then
-		-- Tween root frame transparency
 		for _, child in ipairs(gui:GetChildren()) do
 			if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+				local orig = (_origTransp[guiName] or {})[child.Name] or 0
 				TweenService:Create(child, TweenInfo.new(fadeDuration), {
-					BackgroundTransparency = enabled and 0.1 or 1
+					BackgroundTransparency = enabled and orig or 1
 				}):Play()
 			end
 		end
@@ -66,6 +79,14 @@ local function _setEnabled(guiName, enabled, fadeDuration)
 			gui.Enabled = true
 		end
 	else
+		-- Restore child transparencies when showing without animation
+		if enabled then
+			for _, child in ipairs(gui:GetChildren()) do
+				if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+					child.BackgroundTransparency = (_origTransp[guiName] or {})[child.Name] or 0
+				end
+			end
+		end
 		gui.Enabled = enabled
 	end
 end
