@@ -13,6 +13,17 @@ local TweenService      = game:GetService("TweenService")
 local Constants    = require(ReplicatedStorage.Shared.Constants)
 local RemoteEvents = require(ReplicatedStorage.RemoteEvents)
 
+local _UIManager = nil  -- lazy-loaded to avoid require order issues
+local function _getUIManager()
+	if not _UIManager then
+		local scripts = LocalPlayer:WaitForChild("PlayerScripts", 5)
+		local mods    = scripts and scripts:FindFirstChild("Modules")
+		local mod     = mods and mods:FindFirstChild("UIManager")
+		if mod then _UIManager = require(mod) end
+	end
+	return _UIManager
+end
+
 local LocalPlayer = Players.LocalPlayer
 local Camera      = workspace.CurrentCamera
 
@@ -166,7 +177,6 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				return
 			end
 			local result = RemoteEvents.RequestPickup:InvokeServer(itemId)
-			print("[FarmingClient] RequestPickup result:", result)
 			if result == "ok" then
 				_hidePrompt()
 				_nearestItem = nil
@@ -174,6 +184,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				local idv = _nearestItem and _nearestItem:FindFirstChild("ItemId")
 				_contestItemId  = idv and idv.Value or tostring(_nearestItem)
 				_contestPresses = 1
+			elseif result == "inventory_full" then
+				local ui = _getUIManager()
+				if ui then ui.showNotification("인벤토리가 가득 찼습니다!", 2, Color3.fromRGB(255, 100, 60)) end
+				_flashPromptDenied()
 			else
 				_flashPromptDenied()
 			end

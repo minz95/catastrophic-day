@@ -160,19 +160,12 @@ function _exitDrift()
 end
 
 -- ─── Vehicle drive loop ───────────────────────────────────────────────────────
+-- Basic throttle/steer is handled by Roblox's built-in VehicleSeat controller
+-- automatically when the player is seated. This loop only manages drift entry,
+-- which requires knowing Shift state and current velocity.
 
 local function _driveLoop()
 	if not _seat then return end
-
-	-- Forward / backward
-	local throttle = 0
-	if _keys.W or _keys.Up   then throttle =  1 end
-	if _keys.S or _keys.Down  then throttle = -1 end
-
-	-- Steer
-	local steer = 0
-	if _keys.A or _keys.Left  then steer = -1 end
-	if _keys.D or _keys.Right then steer =  1 end
 
 	-- Drift entry: Shift + turning at speed
 	if _keys.Shift and _isTurning() and not _drifting then
@@ -182,9 +175,6 @@ local function _driveLoop()
 			_enterDrift()
 		end
 	end
-
-	_seat.ThrottleFloat = throttle
-	_seat.SteerFloat    = steer
 end
 
 -- ─── Ability activation ───────────────────────────────────────────────────────
@@ -329,7 +319,22 @@ RemoteEvents.VehicleSpawned.OnClientEvent:Connect(function(userId, vehicleModel)
 	if userId ~= LocalPlayer.UserId then return end
 	_vehicle = vehicleModel
 	_seat    = vehicleModel:FindFirstChildWhichIsA("VehicleSeat", true)
-	Camera.CameraType = Enum.CameraType.Scriptable
+
+	-- VehicleSeat may not have replicated yet — retry for up to 3 seconds
+	if not _seat then
+		task.spawn(function()
+			local deadline = tick() + 3
+			repeat
+				task.wait(0.05)
+				_seat = vehicleModel:FindFirstChildWhichIsA("VehicleSeat", true)
+			until _seat or tick() > deadline
+			if not _seat then
+				warn("[RacingClient] VehicleSeat never found on vehicle model")
+			end
+		end)
+	end
+
+	Camera.CameraType  = Enum.CameraType.Scriptable
 	Camera.FieldOfView = _baseFOV
 end)
 
