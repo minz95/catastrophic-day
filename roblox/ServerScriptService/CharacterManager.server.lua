@@ -200,9 +200,13 @@ GameManager.onPhaseChanged(function(phase, biome)
 		end
 
 	elseif phase == Constants.PHASES.RACING then
-		-- Restore movement (vehicle controls take over, but humanoid should not be frozen)
+		-- Keep walk enabled (humanoid needs to be unseated occasionally) but
+		-- zero out JumpHeight so Space can't eject the player from their vehicle.
 		for _, player in ipairs(Players:GetPlayers()) do
 			_setMovement(player, true)
+			local char = player.Character
+			local hum  = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then hum.JumpHeight = 0 end
 		end
 	end
 end)

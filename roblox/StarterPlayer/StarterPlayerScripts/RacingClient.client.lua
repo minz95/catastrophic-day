@@ -35,7 +35,7 @@ local _abilitySlots  = {}    -- { slotName → itemName } from crafting
 local _keys = {
 	W = false, A = false, S = false, D = false,
 	Up = false, Down = false, Left = false, Right = false,
-	Shift = false, Space = false,
+	Shift = false, Space = false, Ctrl = false,
 	E = false,   -- ability key
 }
 
@@ -48,9 +48,11 @@ local KEY_MAP = {
 	[Enum.KeyCode.Down]  = "Down",
 	[Enum.KeyCode.Left]  = "Left",
 	[Enum.KeyCode.Right] = "Right",
-	[Enum.KeyCode.LeftShift]  = "Shift",
-	[Enum.KeyCode.RightShift] = "Shift",
-	[Enum.KeyCode.Space] = "Space",
+	[Enum.KeyCode.LeftShift]   = "Shift",
+	[Enum.KeyCode.RightShift]  = "Shift",
+	[Enum.KeyCode.Space]       = "Space",
+	[Enum.KeyCode.LeftControl] = "Ctrl",
+	[Enum.KeyCode.RightControl]= "Ctrl",
 	[Enum.KeyCode.E]     = "E",
 }
 
@@ -188,6 +190,18 @@ local function _driveLoop()
 		local forward = primary.CFrame.LookVector
 		bv.Velocity = forward * throttle * maxSpeed
 		bav.AngularVelocity = Vector3.new(0, steer * turnSpeed, 0)
+
+		-- Altitude: Space = 상승, Ctrl = 하강 → HoverPosition 목표 Y를 조절
+		local hover = primary:FindFirstChild("HoverPosition")
+		if hover then
+			local altSpeed = 20   -- studs/s
+			local dt = 1 / 60    -- approximate Heartbeat delta
+			if _keys.Space then
+				hover.Position = hover.Position + Vector3.new(0, altSpeed * dt, 0)
+			elseif _keys.Ctrl then
+				hover.Position = hover.Position - Vector3.new(0, altSpeed * dt, 0)
+			end
+		end
 
 		-- Keep UprightGyro tracking current Y so it only fights X/Z tilt.
 		local gyro = primary:FindFirstChild("UprightGyro")
@@ -380,6 +394,10 @@ function RacingClient.enable()
 	_drifting    = false
 	_abilityIndex = 1
 
+	-- Prevent Space from triggering a jump and ejecting the player from the seat.
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.JumpHeight = 0 end
+
 	-- Get slot assignments from CraftingClient state (via a shared binding or
 	-- stored value in PlayerGui tag — set when SubmitCraft fires)
 	local tag = LocalPlayer.PlayerGui:FindFirstChild("CraftSlots")
@@ -409,6 +427,10 @@ function RacingClient.disable()
 	Camera.FieldOfView = _baseFOV
 	_vehicle = nil
 	_seat    = nil
+
+	-- Restore jumping after race ends.
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.JumpHeight = 7.2 end
 end
 
 -- ─── Biome listener ──────────────────────────────────────────────────────────
