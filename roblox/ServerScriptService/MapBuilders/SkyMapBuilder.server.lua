@@ -12,7 +12,7 @@ local CollectionService = game:GetService("CollectionService")
 local C = {
 	CLOUD_FLAT   = Color3.fromRGB(240, 245, 255),
 	CLOUD_PUFF   = Color3.fromRGB(255, 255, 255),
-	CLOUD_SHADOW = Color3.fromRGB(210, 215, 235),
+	CLOUD_SHADOW = Color3.fromRGB(230, 233, 248),
 	PLATFORM     = Color3.fromRGB(175, 155, 218),
 	PLATFORM2    = Color3.fromRGB(135, 115, 188),
 	PLATFORM3    = Color3.fromRGB(200, 180, 240),
@@ -75,6 +75,30 @@ end
 -- Two layers: large flat slabs below the track, small puff balls at/above track level.
 
 local function _buildClouds(root)
+	-- Sky background floor: large opaque plane that blocks the Roblox Baseplate (at Y=0)
+	-- from showing through when players look down from the platforms at Y≈80.
+	_part(root, {
+		Name         = "SkyBackdrop",
+		Size         = Vector3.new(3000, 6, 3000),
+		Position     = Vector3.new(0, SKY_BASE_Y - 55, 0),
+		Color        = Color3.fromRGB(140, 165, 220),
+		Material     = Enum.Material.SmoothPlastic,
+		CanCollide   = false,
+		CastShadow   = false,
+		Transparency = 0,
+	})
+	-- Haze layer just above the backdrop (soft gradient effect)
+	_part(root, {
+		Name         = "SkyHaze",
+		Size         = Vector3.new(3000, 4, 3000),
+		Position     = Vector3.new(0, SKY_BASE_Y - 48, 0),
+		Color        = Color3.fromRGB(175, 195, 235),
+		Material     = Enum.Material.SmoothPlastic,
+		CanCollide   = false,
+		CastShadow   = false,
+		Transparency = 0.5,
+	})
+
 	local rng = Random.new(77)
 
 	-- Large flat slab clouds (background layer, well below track)

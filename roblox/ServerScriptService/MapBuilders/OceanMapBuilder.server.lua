@@ -22,7 +22,7 @@ local C = {
 }
 
 local MAT = {
-	WATER  = Enum.Material.SmoothPlastic,
+	WATER  = Enum.Material.Glass,
 	WOOD   = Enum.Material.Wood,
 	SAND   = Enum.Material.Sand,
 	METAL  = Enum.Material.Metal,
@@ -31,7 +31,7 @@ local MAT = {
 	ROCK   = Enum.Material.Rock,
 }
 
-local WATER_Y = 0  -- matches BiomeConfig waterPlaneY
+local WATER_Y = 2  -- raised 2 studs so WaterPlane top (Y=2) sits above Roblox Baseplate (Y=0)
 
 local function _part(parent, props)
 	local p = Instance.new("Part")
@@ -70,23 +70,47 @@ end
 -- ─── Water plane ────────────────────────────────────────────────────────────
 
 local function _buildWater(root)
-	local water = _part(root, {
+	-- Ocean floor (opaque, covers baseplate, gives depth colour)
+	_part(root, {
+		Name         = "OceanFloor",
+		Size         = Vector3.new(800, 2, 1800),
+		Position     = Vector3.new(0, WATER_Y - 14, 0),
+		Color        = Color3.fromRGB(8, 35, 90),
+		Material     = Enum.Material.SmoothPlastic,
+		CanCollide   = false,
+		CastShadow   = false,
+	})
+	-- Mid-water volume (dark blue fill, hides anything below surface)
+	_part(root, {
+		Name         = "WaterVolume",
+		Size         = Vector3.new(700, 12, 1700),
+		Position     = Vector3.new(0, WATER_Y - 8, 0),
+		Color        = Color3.fromRGB(12, 55, 140),
+		Material     = Enum.Material.SmoothPlastic,
+		Transparency = 0.15,
+		CanCollide   = false,
+		CastShadow   = false,
+	})
+	-- Surface plane (Glass, WATER_Y-2 centre → top face at WATER_Y, above baseplate)
+	_part(root, {
 		Name         = "WaterPlane",
 		Size         = Vector3.new(600, 4, 1600),
 		Position     = Vector3.new(0, WATER_Y - 2, 0),
-		Color        = C.WATER,
+		Color        = Color3.fromRGB(25, 105, 210),
 		Material     = MAT.WATER,
 		Transparency = 0.35,
 		CanCollide   = false,
 	})
-	-- Deep zone (darker)
+	-- Shimmer layer (very thin Neon strip right at the surface)
 	_part(root, {
-		Name         = "DeepWater",
-		Size         = Vector3.new(600, 1, 1600),
-		Position     = Vector3.new(0, WATER_Y - 6, 0),
-		Color        = Color3.fromRGB(15, 50, 120),
-		Material     = MAT.WATER,
+		Name         = "WaterShimmer",
+		Size         = Vector3.new(600, 0.25, 1600),
+		Position     = Vector3.new(0, WATER_Y, 0),
+		Color        = Color3.fromRGB(120, 200, 255),
+		Material     = Enum.Material.Neon,
+		Transparency = 0.82,
 		CanCollide   = false,
+		CastShadow   = false,
 	})
 end
 

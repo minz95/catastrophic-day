@@ -219,8 +219,19 @@ function MapManager.forceSelectBiome(biome)
 	RemoteEvents.BiomeSelected:FireAllClients(biome)
 end
 
--- ─── Cache transparencies on start ───────────────────────────────────────────
+-- ─── Startup ─────────────────────────────────────────────────────────────────
+
+-- Hide the default Roblox Baseplate so it doesn't show through transparent
+-- water (Ocean) or below the SKY platforms.
+local function _hideBaseplate()
+	local bp = workspace:FindFirstChild("Baseplate")
+	if bp and bp:IsA("BasePart") then
+		bp.Transparency = 1
+		bp.CanCollide   = false
+	end
+end
 
 task.defer(_cacheTransparencies)
+task.defer(_hideBaseplate)
 
 return MapManager
