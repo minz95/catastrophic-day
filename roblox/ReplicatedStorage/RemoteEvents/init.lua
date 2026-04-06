@@ -58,6 +58,7 @@ local FUNCTIONS = {
 	"RequestBoost",
 	"RequestAbility",
 	"RequestRespawn",
+	"RequestDrop",
 }
 
 local RemoteEvents = {}

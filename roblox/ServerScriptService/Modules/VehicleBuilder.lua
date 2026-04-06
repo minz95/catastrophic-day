@@ -82,17 +82,20 @@ local function itemVisual(itemName, attachCF, model)
 
 	local colour = RARITY_COLOURS[cfg.rarity] or Color3.fromRGB(180, 180, 180)
 
-	-- Try to load a pre-made model from ServerStorage
+	-- Try to load a pre-made model from ServerStorage.
+	-- ItemModelPreloader stores models as ServerStorage.ItemModels/<itemName>
+	-- (flat, no slotType subfolder).
 	local templates = ServerStorage:FindFirstChild("ItemModels")
-	if templates then
-		local folder  = templates:FindFirstChild(cfg.slotType)
-		local tmpl    = folder and folder:FindFirstChild(itemName)
-		if tmpl then
-			local clone = tmpl:Clone()
-			clone:SetPrimaryPartCFrame(attachCF)
-			clone.Parent = model
-			return clone.PrimaryPart
+	local tmpl      = templates and templates:FindFirstChild(itemName)
+	if tmpl and tmpl.PrimaryPart then
+		local clone = tmpl:Clone()
+		clone:SetPrimaryPartCFrame(attachCF)
+		clone.Parent = model
+		-- All item parts must be non-collidable and welded to vehicle primary
+		for _, p in ipairs(clone:GetDescendants()) do
+			if p:IsA("BasePart") then p.CanCollide = false end
 		end
+		return clone.PrimaryPart
 	end
 
 	-- Fallback: simple coloured block

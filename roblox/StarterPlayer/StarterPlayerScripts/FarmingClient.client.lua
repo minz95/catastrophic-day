@@ -186,13 +186,28 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				_contestPresses = 1
 			elseif result == "inventory_full" then
 				local ui = _getUIManager()
-				if ui then ui.showNotification("인벤토리가 가득 찼습니다!", 2, Color3.fromRGB(255, 100, 60)) end
+				if ui then ui.showNotification("인벤토리 가득 참 — 더 좋은 아이템만 교체됩니다", 2, Color3.fromRGB(255, 140, 40)) end
 				_flashPromptDenied()
 			else
 				_flashPromptDenied()
 			end
 		elseif _nearestPlayer then
 			-- Long-press handled below via InputEnded
+		end
+	end
+end)
+
+-- Q key: manually drop the item in the first inventory slot
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not _enabled then return end
+	if input.KeyCode == Enum.KeyCode.Q then
+		if #_inventory == 0 then return end
+		-- Drop slot 1 (the least recently picked up item — server auto-tracks)
+		-- Player can press Q multiple times to clear earlier slots.
+		local result = RemoteEvents.RequestDrop:InvokeServer(1)
+		if result == "ok" then
+			local ui = _getUIManager()
+			if ui then ui.showNotification("아이템 버림", 1.2, Color3.fromRGB(180, 180, 180)) end
 		end
 	end
 end)

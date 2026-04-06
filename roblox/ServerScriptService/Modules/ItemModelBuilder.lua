@@ -531,11 +531,11 @@ local function _buildWindTurbine(root)
 				* CFrame.Angles(0, 0, angle),
 			Color3.fromRGB(235, 235, 225), Enum.Material.SmoothPlastic)
 		_w(root, base, blade)
-		-- Blade tip (darker)
+		-- Blade tip (darker) — offset 0.95 SCALE = half blade height from blade centre
 		local tip = _p(root, "BladeTip" .. i,
 			Vector3.new(0.14 * SCALE, 0.3 * SCALE, 0.08 * SCALE),
-			CFrame.new(0.5 * SCALE + bx + math.cos(angle + math.pi / 2) * 1.9 * SCALE,
-				1.6 * SCALE + by + math.sin(angle + math.pi / 2) * 1.9 * SCALE, 0)
+			CFrame.new(0.5 * SCALE + bx + math.cos(angle + math.pi / 2) * 0.95 * SCALE,
+				1.6 * SCALE + by + math.sin(angle + math.pi / 2) * 0.95 * SCALE, 0)
 				* CFrame.Angles(0, 0, angle),
 			Color3.fromRGB(160, 155, 145), Enum.Material.SmoothPlastic)
 		_w(root, base, tip)

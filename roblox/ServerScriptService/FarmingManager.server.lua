@@ -231,6 +231,74 @@ local function _spawnItems(biome)
 	print(string.format("[FarmingManager] Spawned %d items in %s", #usedPositions, biome))
 end
 
+-- ─── Rarity rank (lower = weaker) ────────────────────────────────────────────
+
+local RARITY_RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4 }
+
+-- ─── Drop item from inventory (spawns it back in the world) ───────────────────
+
+local function _dropItem(player, slotIndex)
+	local data = SessionManager.getData(player)
+	if not data or not data.inventory[slotIndex] then return nil end
+
+	local itemName = table.remove(data.inventory, slotIndex)
+	local cfg = ItemConfig[itemName]
+
+	-- Spawn a new world item near the player
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local spawnPos = root and (root.Position + Vector3.new(math.random(-3,3), 0, math.random(-3,3)))
+		or Vector3.new(0, 5, 0)
+
+	local mapName  = (_active and (function()
+		local gm = require(game.ServerScriptService.GameManager)
+		return gm.getBiome()
+	end)()) or "FOREST"
+	mapName = mapName:sub(1,1):upper() .. mapName:sub(2):lower() .. "Map"
+	local mapModel = game.Workspace:FindFirstChild("Maps")
+		and game.Workspace.Maps:FindFirstChild(mapName)
+
+	local model
+	local ok, err = pcall(function()
+		model = ItemModelBuilder.build(itemName, mapModel or game.Workspace)
+	end)
+	if not ok or not model or not model.PrimaryPart then
+		if model then model:Destroy() end
+		RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
+		return itemName
+	end
+
+	local primary = model.PrimaryPart
+	model:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+	primary.Anchored  = true
+	primary.CanCollide = false
+
+	local rarity = cfg and cfg.rarity or "Common"
+
+	local nameVal = Instance.new("StringValue")
+	nameVal.Name = "ItemName"; nameVal.Value = itemName; nameVal.Parent = primary
+	local rarVal = Instance.new("StringValue")
+	rarVal.Name = "Rarity"; rarVal.Value = rarity; rarVal.Parent = primary
+
+	pcall(function() ItemVisualUpgrader.apply(model, rarity) end)
+
+	_itemCounter = _itemCounter + 1
+	local itemId = tostring(_itemCounter)
+	local idVal = Instance.new("StringValue")
+	idVal.Name = "ItemId"; idVal.Value = itemId; idVal.Parent = primary
+
+	_items[itemId] = {
+		part     = primary,
+		model    = model,
+		itemName = itemName,
+		rarity   = rarity,
+		taken    = false,
+	}
+
+	RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
+	return itemName
+end
+
 -- ─── Give item to player ──────────────────────────────────────────────────────
 
 local function _giveItem(player, itemId)
@@ -268,9 +336,35 @@ RemoteEvents.RequestPickup.OnServerInvoke = function(player, itemId)
 	if item.taken          then return "denied: already taken" end
 
 	local data = SessionManager.getData(player)
-	if not data            then return "denied: no player data" end
+	if not data then return "denied: no player data" end
+
+	-- Auto-swap: if inventory is full, drop the lowest-rarity item and pick up the new one.
 	if #data.inventory >= Constants.INVENTORY_SIZE then
-		return "denied: inventory full"
+		local newCfg = ItemConfig[item.itemName]
+		local newRank = RARITY_RANK[newCfg and newCfg.rarity or "Common"] or 1
+
+		-- Find the weakest item in inventory
+		local weakestIdx, weakestRank = 1, 999
+		for i, name in ipairs(data.inventory) do
+			local r = RARITY_RANK[(ItemConfig[name] and ItemConfig[name].rarity) or "Common"] or 1
+			if r < weakestRank then weakestRank = r; weakestIdx = i end
+		end
+
+		-- Only swap if the new item is strictly better than the weakest held item
+		if newRank <= weakestRank then
+			return "inventory_full"
+		end
+
+		local droppedName = _dropItem(player, weakestIdx)
+		-- Notify client which item was auto-dropped
+		if droppedName then
+			local cfg = ItemConfig[droppedName]
+			RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
+			-- Re-check size after drop
+			if #data.inventory >= Constants.INVENTORY_SIZE then
+				return "inventory_full"
+			end
+		end
 	end
 
 	-- Distance check
@@ -318,6 +412,15 @@ RemoteEvents.RequestPickup.OnServerInvoke = function(player, itemId)
 		return "ok"
 	end
 	return "denied: give failed"
+end
+
+-- ─── RequestDrop handler (Q key — manual drop) ───────────────────────────────
+
+RemoteEvents.RequestDrop.OnServerInvoke = function(player, slotIndex)
+	if not _active then return "denied: phase not active" end
+	if type(slotIndex) ~= "number" then return "denied: bad slot" end
+	local dropped = _dropItem(player, slotIndex)
+	return dropped and "ok" or "denied: empty slot"
 end
 
 -- ─── RequestContest handler (press count updates) ─────────────────────────────
