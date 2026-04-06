@@ -499,16 +499,27 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 	gyro.P         = 1e4
 	gyro.Parent    = primaryPart
 
-	-- SKY only: BodyPosition holds altitude at spawn Y.
-	-- MaxForce Y-only so horizontal BodyVelocity is unaffected.
+	-- SKY: fixed altitude hold at spawn height (updated by CraftingManager after parenting).
 	if biome == "SKY" then
 		local hover = Instance.new("BodyPosition")
 		hover.Name     = "HoverPosition"
-		hover.Position = spawnCFrame.Position   -- updated after parenting in CraftingManager
+		hover.Position = spawnCFrame.Position
 		hover.MaxForce = Vector3.new(0, 1e6, 0)
 		hover.D        = 500
 		hover.P        = 5e4
 		hover.Parent   = primaryPart
+
+	-- FOREST/OCEAN: suspension spring — target Y is updated every frame by
+	-- RacingClient via a downward raycast so the vehicle rides over bumps and
+	-- curbs instead of stopping against them.
+	else
+		local susp = Instance.new("BodyPosition")
+		susp.Name     = "SuspensionHover"
+		susp.Position = spawnCFrame.Position
+		susp.MaxForce = Vector3.new(0, 4e4, 0)   -- Y-only; horizontal unchanged
+		susp.P        = 1.2e4
+		susp.D        = 600                        -- high damping → no bounce
+		susp.Parent   = primaryPart
 	end
 
 	-- Place in world

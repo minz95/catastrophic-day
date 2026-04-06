@@ -39,6 +39,10 @@ local _keys = {
 	E = false,   -- ability key
 }
 
+-- Reusable raycast params for suspension (filter updated when vehicle spawns)
+local _suspParams = RaycastParams.new()
+_suspParams.FilterType = Enum.RaycastFilterType.Exclude
+
 local KEY_MAP = {
 	[Enum.KeyCode.W]     = "W",
 	[Enum.KeyCode.A]     = "A",
@@ -199,18 +203,47 @@ local function _driveLoop()
 			end
 		end
 	else
-		-- FOREST/OCEAN: VehicleSeat sets ThrottleFloat/SteerFloat from WASD
-		-- automatically when seated. We drive BodyVelocity with those values
-		-- (built-in VehicleSeat locomotion requires Motor6D wheels, which we
-		-- don't have, so we must apply force ourselves).
+		-- FOREST/OCEAN: read _keys directly (same as SKY) — avoids VehicleSeat
+		-- network ownership delays that cause ThrottleFloat/SteerFloat to stick at 0.
 		if not _seat then return end
-		throttle = _seat.ThrottleFloat          -- -1 / 0 / 1
-		steer    = -_seat.SteerFloat            -- flip sign: SteerFloat +1 = right → -Y turn
+		throttle = 0
+		if _keys.W or _keys.Up   then throttle =  1 end
+		if _keys.S or _keys.Down then throttle = -0.5 end
+		steer = 0
+		if _keys.A or _keys.Left  then steer =  1 end   -- +Y = left turn
+		if _keys.D or _keys.Right then steer = -1 end   -- -Y = right turn
 
-		-- Drift entry
-		if _keys.Shift and math.abs(_seat.SteerFloat) > 0.3 and not _drifting then
+		-- Drift entry (steering key instead of SteerFloat)
+		local isSteering = _keys.A or _keys.D or _keys.Left or _keys.Right
+		if _keys.Shift and isSteering and not _drifting then
 			local vel = primary.AssemblyLinearVelocity.Magnitude
 			if vel > maxSpeed * 0.5 then _enterDrift() end
+		end
+
+		-- Suspension raycast (FOREST only — OCEAN uses server-side buoyancy BodyForce).
+		-- Casts a ray downward each frame; moves SuspensionHover target to keep the
+		-- vehicle center at half-height + 0.2 above whatever surface is below it.
+		-- This lets the vehicle ride over curbs and bumps instead of stopping against them.
+		if _biome == "FOREST" then
+			local susp = primary:FindFirstChild("SuspensionHover")
+			if susp then
+				local halfH = primary.Size.Y * 0.5
+				local ray   = workspace:Raycast(
+					primary.Position,
+					Vector3.new(0, -(halfH + 5), 0),
+					_suspParams
+				)
+				if ray then
+					susp.Position = Vector3.new(
+						primary.Position.X,
+						ray.Position.Y + halfH + 0.2,
+						primary.Position.Z
+					)
+					susp.MaxForce = Vector3.new(0, 4e4, 0)
+				else
+					susp.MaxForce = Vector3.zero  -- airborne: let gravity handle Y
+				end
+			end
 		end
 	end
 
@@ -368,6 +401,7 @@ RemoteEvents.VehicleSpawned.OnClientEvent:Connect(function(userId, vehicleModel)
 	if userId ~= LocalPlayer.UserId then return end
 	_vehicle = vehicleModel
 	_seat    = vehicleModel:FindFirstChildWhichIsA("VehicleSeat", true)
+	_suspParams.FilterDescendantsInstances = {vehicleModel}  -- exclude vehicle from suspension raycast
 
 	-- VehicleSeat may not have replicated yet — retry for up to 3 seconds
 	if not _seat then
