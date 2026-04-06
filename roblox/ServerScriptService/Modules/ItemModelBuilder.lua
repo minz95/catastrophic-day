@@ -531,11 +531,11 @@ local function _buildWindTurbine(root)
 				* CFrame.Angles(0, 0, angle),
 			Color3.fromRGB(235, 235, 225), Enum.Material.SmoothPlastic)
 		_w(root, base, blade)
-		-- Blade tip (darker)
+		-- Blade tip (darker) — offset 0.95 SCALE = half blade height from blade centre
 		local tip = _p(root, "BladeTip" .. i,
 			Vector3.new(0.14 * SCALE, 0.3 * SCALE, 0.08 * SCALE),
-			CFrame.new(0.5 * SCALE + bx + math.cos(angle + math.pi / 2) * 1.9 * SCALE,
-				1.6 * SCALE + by + math.sin(angle + math.pi / 2) * 1.9 * SCALE, 0)
+			CFrame.new(0.5 * SCALE + bx + math.cos(angle + math.pi / 2) * 0.95 * SCALE,
+				1.6 * SCALE + by + math.sin(angle + math.pi / 2) * 0.95 * SCALE, 0)
 				* CFrame.Angles(0, 0, angle),
 			Color3.fromRGB(160, 155, 145), Enum.Material.SmoothPlastic)
 		_w(root, base, tip)
@@ -715,27 +715,46 @@ end
 -- ─── SPECIAL items ────────────────────────────────────────────────────────────
 
 local function _buildPizza(root)
-	local slice = _wedge(root, "Slice",
-		Vector3.new(1.8 * SCALE, 0.15 * SCALE, 1.4 * SCALE),
-		CFrame.new(0, 0, 0),
-		Color3.fromRGB(220, 160, 80), Enum.Material.SmoothPlastic)
-	-- Toppings
+	-- Round pizza base (flat disk, dough colour)
+	local base = _cylinder(root, "Body",
+		0.88 * SCALE, 0.22 * SCALE,
+		Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(210, 160, 75), Enum.Material.SmoothPlastic)
+
+	-- Tomato sauce layer (slightly smaller, raised)
+	local sauce = _cylinder(root, "Sauce",
+		0.72 * SCALE, 0.07 * SCALE,
+		Vector3.new(0, 0.145 * SCALE, 0), nil,
+		Color3.fromRGB(185, 38, 28), Enum.Material.SmoothPlastic)
+	_w(root, base, sauce)
+
+	-- Melted cheese layer
+	local cheese = _cylinder(root, "Cheese",
+		0.66 * SCALE, 0.06 * SCALE,
+		Vector3.new(0, 0.18 * SCALE, 0), nil,
+		Color3.fromRGB(245, 205, 48), Enum.Material.SmoothPlastic)
+	_w(root, base, cheese)
+
+	-- Pepperoni ring (5 slices evenly spaced)
 	for i = 0, 4 do
-		local angle = (i / 5) * math.pi
-		local tx = math.cos(angle) * 0.4 * SCALE
-		local tz = math.sin(angle) * 0.3 * SCALE - 0.2 * SCALE
-		local topping = _sphere(root, "Top" .. i, 0.12 * SCALE,
-			Vector3.new(tx, 0.15 * SCALE, tz),
-			Color3.fromRGB(180, 50, 50), Enum.Material.SmoothPlastic)
-		_w(root, slice, topping)
+		local a  = (i / 5) * math.pi * 2
+		local px = math.cos(a) * 0.43 * SCALE
+		local pz = math.sin(a) * 0.43 * SCALE
+		local pep = _cylinder(root, "Pep" .. i,
+			0.115 * SCALE, 0.07 * SCALE,
+			Vector3.new(px, 0.215 * SCALE, pz), nil,
+			Color3.fromRGB(152, 26, 18), Enum.Material.SmoothPlastic)
+		_w(root, base, pep)
 	end
-	-- Cheese layer
-	local cheese = _wedge(root, "Cheese",
-		Vector3.new(1.6 * SCALE, 0.05 * SCALE, 1.2 * SCALE),
-		CFrame.new(0.05 * SCALE, 0.1 * SCALE, 0),
-		Color3.fromRGB(240, 200, 60), Enum.Material.SmoothPlastic)
-	_w(root, slice, cheese)
-	return slice
+
+	-- Centre pepperoni
+	local mid = _cylinder(root, "PepMid",
+		0.10 * SCALE, 0.07 * SCALE,
+		Vector3.new(0, 0.215 * SCALE, 0), nil,
+		Color3.fromRGB(152, 26, 18), Enum.Material.SmoothPlastic)
+	_w(root, base, mid)
+
+	return base
 end
 
 local function _buildToiletPaper(root)

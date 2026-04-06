@@ -15,40 +15,42 @@ local Constants        = require(ReplicatedStorage.Shared.Constants)
 -- 10 points arranged in a 2×5 grid around the farm area center.
 -- These are fallback positions; Studio map should have Parts tagged "FarmSpawn".
 
-local FARM_SPAWN_CENTER = Vector3.new(0, 3, 200)
-local SPAWN_SPACING     = 8
+local SPAWN_SPACING = 8
 
--- Returns FarmSpawnPoint positions for the given biome's map only.
--- Falls back to the hardcoded grid if the map isn't found.
+-- Biome-specific fallback spawn centres (used when no FarmSpawn tags found in map)
+local BIOME_SPAWN_DEFAULTS = {
+	FOREST = Vector3.new(0,  3,  320),
+	OCEAN  = Vector3.new(0,  3,  320),
+	SKY    = Vector3.new(0, 86,  390),  -- matches SkyMapBuilder SKY_BASE_Y + 4.5 + 1.5
+}
+
+-- Returns CFrame array of spawn points for the given biome.
+-- Filters CollectionService "FarmSpawn" tags to only those inside the active map model
+-- so Forest/Ocean/Sky spawn points don't bleed into each other.
 local function _getFarmSpawnPoints(biome)
-	-- Primary: find FarmSpawnPoint parts inside the active biome's map model
-	if biome then
-		local biomeMapName = biome:sub(1, 1):upper() .. biome:sub(2):lower() .. "Map"
-		local mapsFolder   = workspace:FindFirstChild("Maps")
-		local mapModel     = mapsFolder and mapsFolder:FindFirstChild(biomeMapName)
-		if mapModel then
-			local points = {}
-			for _, part in ipairs(mapModel:GetDescendants()) do
-				if part:IsA("BasePart") and part.Name == "FarmSpawnPoint" then
-					table.insert(points, part.CFrame + Vector3.new(0, 3, 0))
-				end
+	local mapName  = biome and (biome:sub(1,1):upper() .. biome:sub(2):lower() .. "Map") or ""
+	local mapModel = workspace:FindFirstChild("Maps") and workspace.Maps:FindFirstChild(mapName)
+
+	if mapModel then
+		-- Collect only FarmSpawn parts that are descendants of THIS biome's map
+		local points = {}
+		for _, part in ipairs(game:GetService("CollectionService"):GetTagged("FarmSpawn")) do
+			if part:IsDescendantOf(mapModel) then
+				table.insert(points, part.CFrame + Vector3.new(0, 3, 0))
 			end
-			if #points > 0 then return points end
+		end
+		if #points >= 1 then
+			return points
 		end
 	end
 
-	-- Fallback: generate a 2×5 grid around FARM_SPAWN_CENTER
+	-- Fallback: biome-specific 2×5 grid
+	local center = (biome and BIOME_SPAWN_DEFAULTS[biome]) or BIOME_SPAWN_DEFAULTS.FOREST
 	local points = {}
 	for row = 0, 1 do
 		for col = 0, 4 do
 			local idx = row * 5 + col + 1
-			points[idx] = CFrame.new(
-				FARM_SPAWN_CENTER + Vector3.new(
-					(col - 2) * SPAWN_SPACING,
-					0,
-					row * SPAWN_SPACING
-				)
-			)
+			points[idx] = CFrame.new(center + Vector3.new((col - 2) * SPAWN_SPACING, 0, row * SPAWN_SPACING))
 		end
 	end
 	return points
@@ -128,7 +130,8 @@ end
 
 -- ─── Teleport player to farm spawn point ─────────────────────────────────────
 
-local _spawnIndex = 0
+local _spawnIndex  = 0
+local _activeBiome = nil
 
 local function _teleportToFarm(player, biome)
 	local character = player.Character
@@ -136,7 +139,7 @@ local function _teleportToFarm(player, biome)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local points = _getFarmSpawnPoints(biome)
+	local points = _getFarmSpawnPoints(_activeBiome)
 	_spawnIndex = (_spawnIndex % #points) + 1
 	hrp.CFrame = points[_spawnIndex]
 end
@@ -180,7 +183,8 @@ end
 
 GameManager.onPhaseChanged(function(phase, biome)
 	if phase == Constants.PHASES.FARMING then
-		_spawnIndex = 0
+		_activeBiome = biome
+		_spawnIndex  = 0
 		task.wait(0.5)  -- small grace period after phase change
 		for _, player in ipairs(Players:GetPlayers()) do
 			_setMovement(player, true)
@@ -196,9 +200,13 @@ GameManager.onPhaseChanged(function(phase, biome)
 		end
 
 	elseif phase == Constants.PHASES.RACING then
-		-- Restore movement (vehicle controls take over, but humanoid should not be frozen)
+		-- Keep walk enabled (humanoid needs to be unseated occasionally) but
+		-- zero out JumpHeight so Space can't eject the player from their vehicle.
 		for _, player in ipairs(Players:GetPlayers()) do
 			_setMovement(player, true)
+			local char = player.Character
+			local hum  = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then hum.JumpHeight = 0 end
 		end
 	end
 end)

@@ -178,11 +178,10 @@ end
 
 RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
 	if phase == Constants.PHASES.FARMING then
-		-- Only (re)start timer if not already showing — prevents timer reset
-		-- when SessionManager re-sends PhaseChanged on CharacterAdded
-		if not screen.Enabled then
-			_updateSlots({})
-			screen.Enabled = true
+		_updateSlots({})
+		screen.Enabled = true
+		-- Only start timer if not already running (prevent reset on CharacterAdded re-send)
+		if not _runConn then
 			_startTimer()
 		end
 	else

@@ -1,0 +1,6 @@
+{
+  "name": "CatastrophicDayPreview",
+  "tree": {
+    "$path": "MapPreviewPlugin.server.lua"
+  }
+}

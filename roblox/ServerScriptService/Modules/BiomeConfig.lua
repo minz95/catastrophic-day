@@ -44,7 +44,7 @@ BiomeConfig["OCEAN"] = {
 	skyboxId       = "rbxassetid://0",
 	ambientSoundId = "rbxassetid://0",
 
-	waterPlaneY    = 0,                         -- Y coordinate of water surface
+	waterPlaneY    = 2,                         -- Y coordinate of water surface (raised above baseplate)
 
 	hazards = {
 		{

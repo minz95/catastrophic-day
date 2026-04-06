@@ -57,10 +57,10 @@ local function _spawnItems(biome)
 	local pool = _buildSpawnPool()
 	print(string.format("[FarmingManager] Pool size: %d", #pool))
 	local mapCfg = require(ServerScriptService.Modules.BiomeConfig).get(biome)
-	-- Biome is uppercase (e.g. "FOREST"); map is TitleCase + "Map" (e.g. "ForestMap")
-	local biomeTitleCase = biome:sub(1, 1):upper() .. biome:sub(2):lower()
+	-- Convert "FOREST" → "ForestMap" to match MapBuilder naming convention
+	local mapName  = biome:sub(1,1):upper() .. biome:sub(2):lower() .. "Map"
 	local mapModel = game.Workspace:FindFirstChild("Maps")
-		and game.Workspace.Maps:FindFirstChild(biomeTitleCase .. "Map")
+		and game.Workspace.Maps:FindFirstChild(mapName)
 
 	if not mapModel then
 		warn("[FarmingManager] Map not found for biome:", biome)
@@ -73,46 +73,34 @@ local function _spawnItems(biome)
 	-- break for SKY (floating platforms) and OCEAN (elevated dock/island).
 	local spawnCX, spawnCZ, halfX, halfZ, baseY
 
-	do
-		local spawnParts = {}
-		for _, part in ipairs(mapModel:GetDescendants()) do
-			if part:IsA("BasePart") and part.Name == "FarmSpawnPoint" then
-				table.insert(spawnParts, part)
-			end
-		end
+	-- Per-biome hardcoded spawn zones that match each MapBuilder's farm area exactly.
+	-- Bounding-box inference is unreliable (tall trees skew Y; water planes skew X/Z).
+	local BIOME_ZONES = {
+		FOREST = { cx=0, cz=350, halfX=80, halfZ=120, baseY=2.5 },  -- FarmGround Z:200-500, Y top=1
+		OCEAN  = { cx=0, cz=375, halfX=55, halfZ=90,  baseY=4.5 },  -- FarmIsland Z:250-500, FarmGrass Y top=3
+		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=86  },  -- FarmPlatform Z:320-460, Y=84.5+1.5
+	}
 
-		if #spawnParts > 0 then
-			local sumX, sumY, sumZ = 0, 0, 0
-			local minX, maxX = math.huge, -math.huge
-			local minZ, maxZ = math.huge, -math.huge
-			for _, sp in ipairs(spawnParts) do
-				local p = sp.Position
-				sumX = sumX + p.X
-				sumY = sumY + p.Y
-				sumZ = sumZ + p.Z
-				minX = math.min(minX, p.X)
-				maxX = math.max(maxX, p.X)
-				minZ = math.min(minZ, p.Z)
-				maxZ = math.max(maxZ, p.Z)
-			end
-			local n = #spawnParts
-			spawnCX = sumX / n
-			spawnCZ = sumZ / n
-			baseY   = (sumY / n) + 2   -- 2 studs above spawn pad surface
-			-- Extend the scatter area 30/60 studs past the outer spawn pads
-			halfX   = math.min((maxX - minX) * 0.5 + 30, 90)
-			halfZ   = math.min((maxZ - minZ) * 0.5 + 60, 160)
-		else
-			-- Last-resort fallback (shouldn't happen if MapBuilder ran)
-			warn("[FarmingManager] No FarmSpawnPoint found for biome:", biome)
-			local cf = mapModel:GetBoundingBox()
-			spawnCX = cf.Position.X
-			spawnCZ = cf.Position.Z
-			halfX   = 80
-			halfZ   = 140
-			baseY   = cf.Position.Y + 2
-		end
+	-- Always use hardcoded baseY: bounding-box Y is skewed by tall objects (barn, trees).
+	local zone = BIOME_ZONES[biome] or BIOME_ZONES.FOREST
+	baseY = zone.baseY
+
+	local farmModel = mapModel:FindFirstChild("FarmArea")
+	if farmModel then
+		-- Use bounding box only for horizontal extent (X/Z), not Y.
+		local fcf, fsize = farmModel:GetBoundingBox()
+		spawnCX = fcf.Position.X
+		spawnCZ = fcf.Position.Z
+		halfX   = math.min(fsize.X * 0.45, 80)
+		halfZ   = math.min(fsize.Z * 0.45, 150)
+	else
+		spawnCX = zone.cx
+		spawnCZ = zone.cz
+		halfX   = zone.halfX
+		halfZ   = zone.halfZ
 	end
+	print(string.format("[FarmingManager] Spawn zone biome=%s cx=%d cz=%d halfX=%d halfZ=%d baseY=%.1f",
+		tostring(biome), spawnCX, spawnCZ, halfX, halfZ, baseY))
 
 	local usedPositions = {}
 	local MIN_SEPARATION = 6  -- studs
@@ -147,18 +135,19 @@ local function _spawnItems(biome)
 
 		table.insert(usedPositions, pos)
 
-		-- Build item model. Wrapped in pcall so a bad builder never aborts the loop.
+		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural)
+		local itemModels = ServerStorage:FindFirstChild("ItemModels")
+		local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
 		local model
-		local buildOk, buildErr = pcall(function()
+		if prebuilt then
+			model        = prebuilt:Clone()
+			model.Parent = mapModel
+		else
+			-- Fallback: build procedurally (shouldn't happen if Preloader ran)
 			model = ItemModelBuilder.build(entry.name, mapModel)
-		end)
-		if not buildOk then
-			warn("[FarmingManager] Build error for '" .. entry.name .. "': " .. tostring(buildErr))
-			continue
 		end
 		local primary = model and model.PrimaryPart
 		if not primary then
-			warn("[FarmingManager] No PrimaryPart for '" .. entry.name .. "'")
 			if model then model:Destroy() end
 			continue
 		end
@@ -243,6 +232,74 @@ local function _spawnItems(biome)
 	print(string.format("[FarmingManager] Spawned %d items in %s", #usedPositions, biome))
 end
 
+-- ─── Rarity rank (lower = weaker) ────────────────────────────────────────────
+
+local RARITY_RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4 }
+
+-- ─── Drop item from inventory (spawns it back in the world) ───────────────────
+
+local function _dropItem(player, slotIndex)
+	local data = SessionManager.getData(player)
+	if not data or not data.inventory[slotIndex] then return nil end
+
+	local itemName = table.remove(data.inventory, slotIndex)
+	local cfg = ItemConfig[itemName]
+
+	-- Spawn a new world item near the player
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local spawnPos = root and (root.Position + Vector3.new(math.random(-3,3), 0, math.random(-3,3)))
+		or Vector3.new(0, 5, 0)
+
+	local mapName  = (_active and (function()
+		local gm = require(game.ServerScriptService.GameManager)
+		return gm.getBiome()
+	end)()) or "FOREST"
+	mapName = mapName:sub(1,1):upper() .. mapName:sub(2):lower() .. "Map"
+	local mapModel = game.Workspace:FindFirstChild("Maps")
+		and game.Workspace.Maps:FindFirstChild(mapName)
+
+	local model
+	local ok, err = pcall(function()
+		model = ItemModelBuilder.build(itemName, mapModel or game.Workspace)
+	end)
+	if not ok or not model or not model.PrimaryPart then
+		if model then model:Destroy() end
+		RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
+		return itemName
+	end
+
+	local primary = model.PrimaryPart
+	model:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+	primary.Anchored  = true
+	primary.CanCollide = false
+
+	local rarity = cfg and cfg.rarity or "Common"
+
+	local nameVal = Instance.new("StringValue")
+	nameVal.Name = "ItemName"; nameVal.Value = itemName; nameVal.Parent = primary
+	local rarVal = Instance.new("StringValue")
+	rarVal.Name = "Rarity"; rarVal.Value = rarity; rarVal.Parent = primary
+
+	pcall(function() ItemVisualUpgrader.apply(model, rarity) end)
+
+	_itemCounter = _itemCounter + 1
+	local itemId = tostring(_itemCounter)
+	local idVal = Instance.new("StringValue")
+	idVal.Name = "ItemId"; idVal.Value = itemId; idVal.Parent = primary
+
+	_items[itemId] = {
+		part     = primary,
+		model    = model,
+		itemName = itemName,
+		rarity   = rarity,
+		taken    = false,
+	}
+
+	RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
+	return itemName
+end
+
 -- ─── Give item to player ──────────────────────────────────────────────────────
 
 local function _giveItem(player, itemId)
@@ -280,9 +337,35 @@ RemoteEvents.RequestPickup.OnServerInvoke = function(player, itemId)
 	if item.taken          then return "denied: already taken" end
 
 	local data = SessionManager.getData(player)
-	if not data            then return "denied: no player data" end
+	if not data then return "denied: no player data" end
+
+	-- Auto-swap: if inventory is full, drop the lowest-rarity item and pick up the new one.
 	if #data.inventory >= Constants.INVENTORY_SIZE then
-		return "denied: inventory full"
+		local newCfg = ItemConfig[item.itemName]
+		local newRank = RARITY_RANK[newCfg and newCfg.rarity or "Common"] or 1
+
+		-- Find the weakest item in inventory
+		local weakestIdx, weakestRank = 1, 999
+		for i, name in ipairs(data.inventory) do
+			local r = RARITY_RANK[(ItemConfig[name] and ItemConfig[name].rarity) or "Common"] or 1
+			if r < weakestRank then weakestRank = r; weakestIdx = i end
+		end
+
+		-- Only swap if the new item is strictly better than the weakest held item
+		if newRank <= weakestRank then
+			return "inventory_full"
+		end
+
+		local droppedName = _dropItem(player, weakestIdx)
+		-- Notify client which item was auto-dropped
+		if droppedName then
+			local cfg = ItemConfig[droppedName]
+			RemoteEvents.InventoryUpdated:FireClient(player, data.inventory)
+			-- Re-check size after drop
+			if #data.inventory >= Constants.INVENTORY_SIZE then
+				return "inventory_full"
+			end
+		end
 	end
 
 	-- Distance check
@@ -330,6 +413,15 @@ RemoteEvents.RequestPickup.OnServerInvoke = function(player, itemId)
 		return "ok"
 	end
 	return "denied: give failed"
+end
+
+-- ─── RequestDrop handler (Q key — manual drop) ───────────────────────────────
+
+RemoteEvents.RequestDrop.OnServerInvoke = function(player, slotIndex)
+	if not _active then return "denied: phase not active" end
+	if type(slotIndex) ~= "number" then return "denied: bad slot" end
+	local dropped = _dropItem(player, slotIndex)
+	return dropped and "ok" or "denied: empty slot"
 end
 
 -- ─── RequestContest handler (press count updates) ─────────────────────────────
@@ -439,7 +531,11 @@ GameManager.onPhaseChanged(function(phase, biome)
 	if phase == Constants.PHASES.FARMING then
 		_active = true
 		_farmingStartTick = tick()
+		print("[FarmingManager] Starting FARMING phase, biome =", biome)
 		_spawnItems(biome)
+		print("[FarmingManager] After spawn: total items registered =", (function()
+			local n = 0; for _ in pairs(_items) do n = n + 1 end; return n
+		end)())
 
 	elseif phase == Constants.PHASES.CRAFTING then
 		_active = false

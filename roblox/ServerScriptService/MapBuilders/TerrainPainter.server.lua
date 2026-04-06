@@ -145,7 +145,7 @@ end
 
 local function _detectAndPaint()
 	-- Watch for map models being created
-	workspace:DescendantAdded:Connect(function(desc)
+	workspace.DescendantAdded:Connect(function(desc)
 		if desc:IsA("Model") and desc:GetAttribute("Biome") then
 			local biome = desc:GetAttribute("Biome")
 			_clearTerrain()

@@ -150,13 +150,33 @@ local function _selectAndLoadBiome()
 	return biome
 end
 
+-- ─── Sub-model visibility (FarmArea / RaceTrack) ─────────────────────────────
+
+local function _setSubVisible(biome, subName, visible)
+	local mapName  = biome:sub(1,1):upper() .. biome:sub(2):lower() .. "Map"
+	local mapModel = _getMapsFolder():FindFirstChild(mapName)
+	if not mapModel then return end
+	local sub = mapModel:FindFirstChild(subName)
+	if not sub then return end
+	for _, desc in ipairs(sub:GetDescendants()) do
+		if desc:IsA("BasePart") then
+			if visible then
+				local stored = desc:GetAttribute("OriginalTransparency")
+				desc.Transparency = stored ~= nil and stored or 0
+				desc.CanCollide   = true
+			else
+				desc.Transparency = 1
+				desc.CanCollide   = false
+			end
+		end
+	end
+end
+
 -- ─── Phase listener ───────────────────────────────────────────────────────────
 
 GameManager.onPhaseChanged(function(phase, biome)
 	-- IMPORTANT: use the biome provided by GameManager (already authoritative).
 	-- Never call BiomeConfig.random() here — GameManager owns biome selection.
-	-- Previously MapManager picked its own random biome, causing it to show a
-	-- different map than the one FarmingManager was spawning items into.
 
 	if phase == Constants.PHASES.FARMING then
 		if not biome then return end
@@ -164,6 +184,15 @@ GameManager.onPhaseChanged(function(phase, biome)
 		_hideAllMaps()
 		_showMap(biome)
 		_applyLighting(biome)
+		-- Show farm area only; hide race track during farming phase
+		_setSubVisible(biome, "FarmArea",  true)
+		_setSubVisible(biome, "RaceTrack", false)
+
+	elseif phase == Constants.PHASES.RACING then
+		if not _currentBiome then return end
+		-- Show race track; hide farm area during racing phase
+		_setSubVisible(_currentBiome, "FarmArea",  false)
+		_setSubVisible(_currentBiome, "RaceTrack", true)
 
 	elseif phase == Constants.PHASES.RESULTS then
 		task.delay(Constants.PHASE_DURATION.RESULTS or 15, function()
@@ -190,8 +219,19 @@ function MapManager.forceSelectBiome(biome)
 	RemoteEvents.BiomeSelected:FireAllClients(biome)
 end
 
--- ─── Cache transparencies on start ───────────────────────────────────────────
+-- ─── Startup ─────────────────────────────────────────────────────────────────
+
+-- Hide the default Roblox Baseplate so it doesn't show through transparent
+-- water (Ocean) or below the SKY platforms.
+local function _hideBaseplate()
+	local bp = workspace:FindFirstChild("Baseplate")
+	if bp and bp:IsA("BasePart") then
+		bp.Transparency = 1
+		bp.CanCollide   = false
+	end
+end
 
 task.defer(_cacheTransparencies)
+task.defer(_hideBaseplate)
 
 return MapManager

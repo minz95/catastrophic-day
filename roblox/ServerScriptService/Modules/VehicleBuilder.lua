@@ -82,17 +82,20 @@ local function itemVisual(itemName, attachCF, model)
 
 	local colour = RARITY_COLOURS[cfg.rarity] or Color3.fromRGB(180, 180, 180)
 
-	-- Try to load a pre-made model from ServerStorage
+	-- Try to load a pre-made model from ServerStorage.
+	-- ItemModelPreloader stores models as ServerStorage.ItemModels/<itemName>
+	-- (flat, no slotType subfolder).
 	local templates = ServerStorage:FindFirstChild("ItemModels")
-	if templates then
-		local folder  = templates:FindFirstChild(cfg.slotType)
-		local tmpl    = folder and folder:FindFirstChild(itemName)
-		if tmpl then
-			local clone = tmpl:Clone()
-			clone:SetPrimaryPartCFrame(attachCF)
-			clone.Parent = model
-			return clone.PrimaryPart
+	local tmpl      = templates and templates:FindFirstChild(itemName)
+	if tmpl and tmpl.PrimaryPart then
+		local clone = tmpl:Clone()
+		clone:SetPrimaryPartCFrame(attachCF)
+		clone.Parent = model
+		-- All item parts must be non-collidable and welded to vehicle primary
+		for _, p in ipairs(clone:GetDescendants()) do
+			if p:IsA("BasePart") then p.CanCollide = false end
 		end
+		return clone.PrimaryPart
 	end
 
 	-- Fallback: simple coloured block
@@ -464,6 +467,60 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 
 	-- Visual flair from stats
 	_applyStatVisuals(model, stats, palette)
+
+	-- ── Physics drive constraints ─────────────────────────────────────────────
+	-- VehicleSeat's built-in Torque/TurnSpeed require Motor6D wheel joints to
+	-- actually propel the vehicle. Without them, ThrottleFloat/SteerFloat are
+	-- set by Roblox from WASD but no force is applied automatically.
+	-- RacingClient reads those values and drives BodyVelocity/BodyAngularVelocity
+	-- every Heartbeat for all biomes.
+
+	local driveVel = Instance.new("BodyVelocity")
+	driveVel.Name     = "DriveVelocity"
+	driveVel.Velocity = Vector3.zero
+	driveVel.MaxForce = Vector3.new(1e4, 0, 1e4)   -- no Y so gravity still acts
+	driveVel.P        = 1e4
+	driveVel.Parent   = primaryPart
+
+	local driveAng = Instance.new("BodyAngularVelocity")
+	driveAng.Name            = "DriveAngular"
+	driveAng.AngularVelocity = Vector3.zero
+	driveAng.MaxTorque       = Vector3.new(0, 1e4, 0)
+	driveAng.P               = 1e4
+	driveAng.Parent          = primaryPart
+
+	-- BodyGyro: resists X/Z tilting so the vehicle stays upright.
+	-- MaxTorque Y=0 so DriveAngular still steers freely.
+	local gyro = Instance.new("BodyGyro")
+	gyro.Name      = "UprightGyro"
+	gyro.CFrame    = CFrame.new()
+	gyro.MaxTorque = Vector3.new(1e5, 0, 1e5)
+	gyro.D         = 200
+	gyro.P         = 1e4
+	gyro.Parent    = primaryPart
+
+	-- SKY: fixed altitude hold at spawn height (updated by CraftingManager after parenting).
+	if biome == "SKY" then
+		local hover = Instance.new("BodyPosition")
+		hover.Name     = "HoverPosition"
+		hover.Position = spawnCFrame.Position
+		hover.MaxForce = Vector3.new(0, 1e6, 0)
+		hover.D        = 500
+		hover.P        = 5e4
+		hover.Parent   = primaryPart
+
+	-- FOREST/OCEAN: suspension spring — target Y is updated every frame by
+	-- RacingClient via a downward raycast so the vehicle rides over bumps and
+	-- curbs instead of stopping against them.
+	else
+		local susp = Instance.new("BodyPosition")
+		susp.Name     = "SuspensionHover"
+		susp.Position = spawnCFrame.Position
+		susp.MaxForce = Vector3.new(0, 4e4, 0)   -- Y-only; horizontal unchanged
+		susp.P        = 1.2e4
+		susp.D        = 600                        -- high damping → no bounce
+		susp.Parent   = primaryPart
+	end
 
 	-- Place in world
 	model:SetPrimaryPartCFrame(spawnCFrame)

@@ -2,6 +2,8 @@
 -- Proximity detection, pickup prompt, contest UI, and steal prompt.
 -- Resolves: Issue #18, #64
 
+print("[FarmingClient] LocalScript started")
+
 local Players           = game:GetService("Players")
 local UserInputService  = game:GetService("UserInputService")
 local RunService        = game:GetService("RunService")
@@ -10,6 +12,17 @@ local TweenService      = game:GetService("TweenService")
 
 local Constants    = require(ReplicatedStorage.Shared.Constants)
 local RemoteEvents = require(ReplicatedStorage.RemoteEvents)
+
+local _UIManager = nil  -- lazy-loaded to avoid require order issues
+local function _getUIManager()
+	if not _UIManager then
+		local scripts = LocalPlayer:WaitForChild("PlayerScripts", 5)
+		local mods    = scripts and scripts:FindFirstChild("Modules")
+		local mod     = mods and mods:FindFirstChild("UIManager")
+		if mod then _UIManager = require(mod) end
+	end
+	return _UIManager
+end
 
 local LocalPlayer = Players.LocalPlayer
 local Camera      = workspace.CurrentCamera
@@ -142,9 +155,13 @@ end
 -- ─── E handler ────────────────────────────────────────────────────────────
 
 UserInputService.InputBegan:Connect(function(input, processed)
+	if input.KeyCode == Enum.KeyCode.E then
+		print("[FarmingClient] E pressed | processed=", processed, "| _enabled=", _enabled, "| _nearestItem=", _nearestItem)
+	end
 	if processed or not _enabled then return end
 
 	if input.KeyCode == Enum.KeyCode.E then
+		print("[FarmingClient] E pressed | enabled=", _enabled, " nearestItem=", tostring(_nearestItem), " nearestPlayer=", tostring(_nearestPlayer))
 		if _contestItemId then
 			-- We're in a contest — count presses
 			_contestPresses = _contestPresses + 1
@@ -160,7 +177,6 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				return
 			end
 			local result = RemoteEvents.RequestPickup:InvokeServer(itemId)
-			print("[FarmingClient] RequestPickup result:", result)
 			if result == "ok" then
 				_hidePrompt()
 				_nearestItem = nil
@@ -168,11 +184,30 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				local idv = _nearestItem and _nearestItem:FindFirstChild("ItemId")
 				_contestItemId  = idv and idv.Value or tostring(_nearestItem)
 				_contestPresses = 1
+			elseif result == "inventory_full" then
+				local ui = _getUIManager()
+				if ui then ui.showNotification("인벤토리 가득 참 — 더 좋은 아이템만 교체됩니다", 2, Color3.fromRGB(255, 140, 40)) end
+				_flashPromptDenied()
 			else
 				_flashPromptDenied()
 			end
 		elseif _nearestPlayer then
 			-- Long-press handled below via InputEnded
+		end
+	end
+end)
+
+-- Q key: manually drop the item in the first inventory slot
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not _enabled then return end
+	if input.KeyCode == Enum.KeyCode.Q then
+		if #_inventory == 0 then return end
+		-- Drop slot 1 (the least recently picked up item — server auto-tracks)
+		-- Player can press Q multiple times to clear earlier slots.
+		local result = RemoteEvents.RequestDrop:InvokeServer(1)
+		if result == "ok" then
+			local ui = _getUIManager()
+			if ui then ui.showNotification("아이템 버림", 1.2, Color3.fromRGB(180, 180, 180)) end
 		end
 	end
 end)
@@ -282,8 +317,10 @@ end
 -- silently when file renames cause Rojo sync inconsistencies.
 
 RemoteEvents.PhaseChanged.OnClientEvent:Connect(function(phase)
+	print("[FarmingClient] PhaseChanged received:", phase)
 	if phase == Constants.PHASES.FARMING then
 		FarmingClient.enable()
+		print("[FarmingClient] Enabled, scanning for items every heartbeat")
 	else
 		FarmingClient.disable()
 	end

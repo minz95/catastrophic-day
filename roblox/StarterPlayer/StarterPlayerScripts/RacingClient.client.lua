@@ -35,9 +35,13 @@ local _abilitySlots  = {}    -- { slotName → itemName } from crafting
 local _keys = {
 	W = false, A = false, S = false, D = false,
 	Up = false, Down = false, Left = false, Right = false,
-	Shift = false, Space = false,
+	Shift = false, Space = false, Ctrl = false,
 	E = false,   -- ability key
 }
+
+-- Reusable raycast params for suspension (filter updated when vehicle spawns)
+local _suspParams = RaycastParams.new()
+_suspParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local KEY_MAP = {
 	[Enum.KeyCode.W]     = "W",
@@ -48,17 +52,19 @@ local KEY_MAP = {
 	[Enum.KeyCode.Down]  = "Down",
 	[Enum.KeyCode.Left]  = "Left",
 	[Enum.KeyCode.Right] = "Right",
-	[Enum.KeyCode.LeftShift]  = "Shift",
-	[Enum.KeyCode.RightShift] = "Shift",
-	[Enum.KeyCode.Space] = "Space",
+	[Enum.KeyCode.LeftShift]   = "Shift",
+	[Enum.KeyCode.RightShift]  = "Shift",
+	[Enum.KeyCode.Space]       = "Space",
+	[Enum.KeyCode.LeftControl] = "Ctrl",
+	[Enum.KeyCode.RightControl]= "Ctrl",
 	[Enum.KeyCode.E]     = "E",
 }
 
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
 	local k = KEY_MAP[input.KeyCode]
-	if k then _keys[k] = true end
+	if k then _keys[k] = true end  -- always track, even when VehicleSeat marks input as processed
 
+	if processed then return end
 	if not _active then return end
 
 	-- Boost
@@ -70,11 +76,18 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if k == "E" then
 		_triggerAbility()
 	end
+
+	-- Manual respawn (R key) — useful when stuck off-track
+	if input.KeyCode == Enum.KeyCode.R then
+		RemoteEvents.RequestRespawn:InvokeServer()
+	end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
 	local k = KEY_MAP[input.KeyCode]
 	if k then _keys[k] = false end
+
+	if not _active then return end
 
 	-- End drift when Shift released
 	if k == "Shift" and _drifting then
@@ -126,10 +139,6 @@ end
 
 local _driftGripBackup = nil
 
-local function _isTurning()
-	return (_keys.A or _keys.Left) or (_keys.D or _keys.Right)
-end
-
 local function _enterDrift()
 	if not _seat or _drifting then return end
 	_drifting       = true
@@ -158,31 +167,96 @@ function _exitDrift()
 end
 
 -- ─── Vehicle drive loop ───────────────────────────────────────────────────────
+-- FOREST/OCEAN: VehicleSeat built-in handles throttle/steer. Loop detects drift.
+-- SKY: No ground contact → manually drive via BodyVelocity each frame.
 
 local function _driveLoop()
-	if not _seat then return end
+	if not _vehicle or not _vehicle.PrimaryPart then return end
+	local primary = _vehicle.PrimaryPart
 
-	-- Forward / backward
-	local throttle = 0
-	if _keys.W or _keys.Up   then throttle =  1 end
-	if _keys.S or _keys.Down  then throttle = -1 end
+	local bv  = primary:FindFirstChild("DriveVelocity")
+	local bav = primary:FindFirstChild("DriveAngular")
+	if not bv or not bav then return end
 
-	-- Steer
-	local steer = 0
-	if _keys.A or _keys.Left  then steer = -1 end
-	if _keys.D or _keys.Right then steer =  1 end
+	local maxSpeed  = _seat and _seat.MaxSpeed  or 40
+	local turnSpeed = _seat and _seat.TurnSpeed or 1
+	local throttle, steer
 
-	-- Drift entry: Shift + turning at speed
-	if _keys.Shift and _isTurning() and not _drifting then
-		local vel = _vehicle and _vehicle.PrimaryPart and
-			_vehicle.PrimaryPart.AssemblyLinearVelocity.Magnitude or 0
-		if vel > (_seat.MaxSpeed * 0.5) then
-			_enterDrift()
+	if _biome == "SKY" then
+		-- SKY: VehicleSeat has no ground contact — read _keys directly.
+		throttle = 0
+		if _keys.W or _keys.Up   then throttle =  1 end
+		if _keys.S or _keys.Down then throttle = -0.5 end
+		steer = 0
+		if _keys.A or _keys.Left  then steer =  1 end
+		if _keys.D or _keys.Right then steer = -1 end
+		turnSpeed = math.min(turnSpeed, 1.5)
+
+		-- Altitude: Space = 상승, Ctrl = 하강
+		local hover = primary:FindFirstChild("HoverPosition")
+		if hover then
+			local dt = 1 / 60
+			if _keys.Space then
+				hover.Position = hover.Position + Vector3.new(0, 20 * dt, 0)
+			elseif _keys.Ctrl then
+				hover.Position = hover.Position - Vector3.new(0, 20 * dt, 0)
+			end
+		end
+	else
+		-- FOREST/OCEAN: read _keys directly (same as SKY) — avoids VehicleSeat
+		-- network ownership delays that cause ThrottleFloat/SteerFloat to stick at 0.
+		if not _seat then return end
+		throttle = 0
+		if _keys.W or _keys.Up   then throttle =  1 end
+		if _keys.S or _keys.Down then throttle = -0.5 end
+		steer = 0
+		if _keys.A or _keys.Left  then steer =  1 end   -- +Y = left turn
+		if _keys.D or _keys.Right then steer = -1 end   -- -Y = right turn
+
+		-- Drift entry (steering key instead of SteerFloat)
+		local isSteering = _keys.A or _keys.D or _keys.Left or _keys.Right
+		if _keys.Shift and isSteering and not _drifting then
+			local vel = primary.AssemblyLinearVelocity.Magnitude
+			if vel > maxSpeed * 0.5 then _enterDrift() end
+		end
+
+		-- Suspension raycast (FOREST only — OCEAN uses server-side buoyancy BodyForce).
+		-- Casts a ray downward each frame; moves SuspensionHover target to keep the
+		-- vehicle center at half-height + 0.2 above whatever surface is below it.
+		-- This lets the vehicle ride over curbs and bumps instead of stopping against them.
+		if _biome == "FOREST" then
+			local susp = primary:FindFirstChild("SuspensionHover")
+			if susp then
+				local halfH = primary.Size.Y * 0.5
+				local ray   = workspace:Raycast(
+					primary.Position,
+					Vector3.new(0, -(halfH + 5), 0),
+					_suspParams
+				)
+				if ray then
+					susp.Position = Vector3.new(
+						primary.Position.X,
+						ray.Position.Y + halfH + 0.2,
+						primary.Position.Z
+					)
+					susp.MaxForce = Vector3.new(0, 4e4, 0)
+				else
+					susp.MaxForce = Vector3.zero  -- airborne: let gravity handle Y
+				end
+			end
 		end
 	end
 
-	_seat.ThrottleFloat = throttle
-	_seat.SteerFloat    = steer
+	local forward = primary.CFrame.LookVector
+	bv.Velocity            = forward * throttle * maxSpeed
+	bav.AngularVelocity    = Vector3.new(0, steer * turnSpeed, 0)
+
+	-- Keep UprightGyro tracking current Y so it only resists X/Z tilt.
+	local gyro = primary:FindFirstChild("UprightGyro")
+	if gyro then
+		local _, currentY, _ = primary.CFrame:ToEulerAnglesYXZ()
+		gyro.CFrame = CFrame.fromEulerAnglesYXZ(0, currentY, 0)
+	end
 end
 
 -- ─── Ability activation ───────────────────────────────────────────────────────
@@ -327,7 +401,23 @@ RemoteEvents.VehicleSpawned.OnClientEvent:Connect(function(userId, vehicleModel)
 	if userId ~= LocalPlayer.UserId then return end
 	_vehicle = vehicleModel
 	_seat    = vehicleModel:FindFirstChildWhichIsA("VehicleSeat", true)
-	Camera.CameraType = Enum.CameraType.Scriptable
+	_suspParams.FilterDescendantsInstances = {vehicleModel}  -- exclude vehicle from suspension raycast
+
+	-- VehicleSeat may not have replicated yet — retry for up to 3 seconds
+	if not _seat then
+		task.spawn(function()
+			local deadline = tick() + 3
+			repeat
+				task.wait(0.05)
+				_seat = vehicleModel:FindFirstChildWhichIsA("VehicleSeat", true)
+			until _seat or tick() > deadline
+			if not _seat then
+				warn("[RacingClient] VehicleSeat never found on vehicle model")
+			end
+		end)
+	end
+
+	Camera.CameraType  = Enum.CameraType.Scriptable
 	Camera.FieldOfView = _baseFOV
 end)
 
@@ -339,6 +429,10 @@ function RacingClient.enable()
 	_boostGauge  = 1
 	_drifting    = false
 	_abilityIndex = 1
+
+	-- Prevent Space from triggering a jump and ejecting the player from the seat.
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.JumpHeight = 0 end
 
 	-- Get slot assignments from CraftingClient state (via a shared binding or
 	-- stored value in PlayerGui tag — set when SubmitCraft fires)
@@ -369,6 +463,10 @@ function RacingClient.disable()
 	Camera.FieldOfView = _baseFOV
 	_vehicle = nil
 	_seat    = nil
+
+	-- Restore jumping after race ends.
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.JumpHeight = 7.2 end
 end
 
 -- ─── Biome listener ──────────────────────────────────────────────────────────

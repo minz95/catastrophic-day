@@ -148,24 +148,42 @@ GameManager.onPhaseChanged(function(phase, biome)
 				)
 
 				if model then
+					-- Anchor PrimaryPart so gravity doesn't drop the vehicle
+					-- before the player is seated (critical for SKY biome).
+					local primary = model.PrimaryPart
+					if primary then primary.Anchored = true end
+
 					model.Parent = game.Workspace
+
+					-- Update SKY hover target to actual spawn Y after parenting
+					if biome == "SKY" and primary then
+						local hoverPos = primary:FindFirstChild("HoverPosition")
+						if hoverPos then
+							hoverPos.Position = primary.Position
+						end
+					end
+
 					SessionManager.setVehicle(player, model, stats)
 
-					-- Give the model one frame to replicate before firing the client
-					-- event and before calling :Sit(), otherwise the client receives
-					-- a model reference it hasn't loaded yet and seat physics are wrong.
+					-- One frame for replication before firing the client event.
 					task.wait()
 
 					local seat = model:FindFirstChildWhichIsA("VehicleSeat", true)
 					if seat then
 						print(string.format("[CraftingManager] Vehicle for %s spawned at %s | seat=%s",
-							player.Name, tostring(model.PrimaryPart and model.PrimaryPart.Position), tostring(seat)))
+							player.Name, tostring(primary and primary.Position), tostring(seat)))
 						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
 						if player.Character then
 							seat:Sit(player.Character:FindFirstChild("Humanoid"))
 						end
+						-- Unanchor after sit takes effect so vehicle can move
+						task.wait(0.2)
+						if primary and primary.Parent then
+							primary.Anchored = false
+						end
 					else
 						warn("[CraftingManager] No VehicleSeat found in vehicle for", player.Name)
+						if primary and primary.Parent then primary.Anchored = false end
 						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
 					end
 				else

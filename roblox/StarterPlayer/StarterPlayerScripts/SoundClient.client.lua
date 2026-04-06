@@ -22,6 +22,7 @@ local _currentBiome = nil
 -- ─── Sound builder ───────────────────────────────────────────────────────────
 
 local function _makeSound(cfg, parent)
+	if not cfg or not cfg.id or cfg.id == "" then return nil end
 	local s = Instance.new("Sound")
 	s.SoundId    = cfg.id
 	s.Volume     = cfg.volume or 0.5
@@ -48,6 +49,7 @@ local function _playSFX(key)
 		s = _makeSound(cfg, SoundService)
 		_sfxCache[key] = s
 	end
+	if not s then return end  -- empty id, skip
 
 	-- Clone for overlapping hits
 	if s.IsPlaying then
@@ -76,7 +78,7 @@ local function _fadeBGM(targetVolume, duration, callback)
 end
 
 local function _playBGM(cfg)
-	if not cfg then return end
+	if not cfg or not cfg.id or cfg.id == "" then return end
 
 	-- Fade out current BGM
 	_fadeBGM(0, 0.8, function()
@@ -85,6 +87,7 @@ local function _playBGM(cfg)
 			_bgmInstance = nil
 		end
 		local s = _makeSound(cfg, SoundService)
+		if not s then return end
 		s.Volume = 0
 		s:Play()
 		_bgmInstance = s
@@ -110,6 +113,7 @@ local function _startAmbience(biome)
 	if not ambiList then return end
 	for _, cfg in ipairs(ambiList) do
 		local s = _makeSound(cfg, SoundService)
+		if not s then continue end
 		s.Volume = 0
 		s:Play()
 		TweenService:Create(s, TweenInfo.new(2.0), { Volume = cfg.volume }):Play()
