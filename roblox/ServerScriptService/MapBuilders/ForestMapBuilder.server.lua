@@ -242,14 +242,14 @@ end
 local TRACK_W = 30
 
 local NODES = {
-	{  0,   175 },  -- [1] transition from farm
+	{  0,   215 },  -- [1] pre-start straight (covers spawn area Z=195–203)
 	{ -22,   45 },  -- [2] first curve, shifts left
 	{ -22,  -65 },  -- [3] left straight
 	{  20, -185 },  -- [4] S-curve, swings right
 	{  20, -305 },  -- [5] right straight
 	{ -18, -415 },  -- [6] second S-curve, swings left
 	{ -18, -510 },  -- [7] left straight
-	{   0, -575 },  -- [8] finish approach
+	{   0, -605 },  -- [8] finish approach (extends past finish line at Z=-599)
 }
 
 local function _buildTrack(root)
@@ -373,10 +373,10 @@ end
 
 local function _buildMudZones(root)
 	local zones = {
-		{ NODES[2][1] + 5,  0.6,  20, -50  },  -- near node 2
-		{ NODES[4][1] - 6,  0.6,  18, -210 },  -- near node 4
-		{ NODES[6][1] + 8,  0.6,  22, -440 },  -- near node 6
-		{ NODES[7][1] - 4,  0.6,  16, -490 },  -- node 7 stretch
+		{ NODES[2][1] + 5,  1.2,  20, -50  },  -- near node 2
+		{ NODES[4][1] - 6,  1.2,  18, -210 },  -- near node 4
+		{ NODES[6][1] + 8,  1.2,  22, -440 },  -- near node 6
+		{ NODES[7][1] - 4,  1.2,  16, -490 },  -- node 7 stretch
 	}
 	for i, mz in ipairs(zones) do
 		local mud = _part(root, {
@@ -457,12 +457,12 @@ local function _buildJumpRamps(root)
 			Color    = C.RAMP,
 			Material = MAT.DIRT,
 		})
-		ramp.CFrame = CFrame.new(r[1], 2.5, r[2]) * CFrame.Angles(0, math.pi, 0)
+		ramp.CFrame = CFrame.new(r[1], 3.5, r[2]) * CFrame.Angles(0, math.pi, 0)
 
 		_part(root, {
 			Name     = "LandingPad_" .. i,
 			Size     = Vector3.new(TRACK_W, 1, 22),
-			Position = Vector3.new(r[1], 0.5, r[2] - 17),
+			Position = Vector3.new(r[1], 1.5, r[2] - 17),  -- match track top = 1.0
 			Color    = C.RAMP,
 			Material = MAT.DIRT,
 		})
@@ -470,7 +470,7 @@ local function _buildJumpRamps(root)
 		local jz = _part(root, {
 			Name     = "JumpZone_" .. i,
 			Size     = Vector3.new(TRACK_W, 10, 14),
-			Position = Vector3.new(r[1], 5, r[2]),
+			Position = Vector3.new(r[1], 6, r[2]),
 			CanCollide  = false,
 			Transparency = 1,
 		})
@@ -491,7 +491,7 @@ local function _buildBoostPads(root)
 		local pad = _part(root, {
 			Name     = "BoostPad_" .. i,
 			Size     = Vector3.new(10, 0.3, 6),
-			Position = Vector3.new(pd[1], 0.7, pd[2]),
+			Position = Vector3.new(pd[1], 1.15, pd[2]),  -- on track surface (track top = 1.0)
 			Color    = C.BOOST_PAD,
 			Material = MAT.NEON,
 			CanCollide = false,
@@ -507,7 +507,7 @@ local function _buildBoostPads(root)
 			CanCollide = false,
 			CastShadow = false,
 		})
-		arrow.CFrame = CFrame.new(pd[1], 0.9, pd[2] - 4) * CFrame.Angles(0, math.pi, 0)
+		arrow.CFrame = CFrame.new(pd[1], 1.35, pd[2] - 4) * CFrame.Angles(0, math.pi, 0)
 	end
 end
 
@@ -639,7 +639,7 @@ local function _buildFinishLine(root)
 			_part(root, {
 				Name     = "FinishTile",
 				Size     = Vector3.new(4, 0.3, 4),
-				Position = Vector3.new(col, 0.8, -598 + row * 4),
+				Position = Vector3.new(col, 1.15, -598 + row * 4),
 				Color    = (math.floor(col / 4) + row) % 2 == 0
 					and Color3.new(1,1,1) or Color3.new(0,0,0),
 				Material = MAT.METAL,
@@ -651,7 +651,7 @@ local function _buildFinishLine(root)
 	local finish = _part(root, {
 		Name         = "FinishLine",
 		Size         = Vector3.new(32, 8, 2),
-		Position     = Vector3.new(0, 4, -599),
+		Position     = Vector3.new(0, 5, -599),  -- bottom at Y=1 (track surface), top at Y=9
 		CanCollide   = false,
 		Transparency = 1,
 	})
@@ -661,7 +661,7 @@ local function _buildFinishLine(root)
 		_part(root, {
 			Name     = "FinishPole",
 			Size     = Vector3.new(1.5, 16, 1.5),
-			Position = Vector3.new(side * 17, 8, -599),
+			Position = Vector3.new(side * 17, 9, -599),
 			Color    = Color3.fromRGB(240, 240, 240),
 			Material = MAT.METAL,
 		})
@@ -669,7 +669,7 @@ local function _buildFinishLine(root)
 	_part(root, {
 		Name     = "FinishArch",
 		Size     = Vector3.new(36, 2.5, 1.5),
-		Position = Vector3.new(0, 16.5, -599),
+		Position = Vector3.new(0, 18, -599),
 		Color    = Color3.fromRGB(220, 55, 55),
 		Material = MAT.NEON,
 		CanCollide = false,
@@ -679,7 +679,7 @@ local function _buildFinishLine(root)
 		_part(root, {
 			Name     = "ArchBanner",
 			Size     = Vector3.new(8, 4, 0.4),
-			Position = Vector3.new(bx, 14, -599),
+			Position = Vector3.new(bx, 15, -599),
 			Color    = math.abs(bx) % 16 == 0
 				and Color3.new(1,1,1) or Color3.new(0,0,0),
 			Material = MAT.METAL,
@@ -691,15 +691,15 @@ end
 -- ─── Start grid ───────────────────────────────────────────────────────────────
 
 local function _buildStartGrid(root)
-	local cols = { -16, -8, 0, 8, 16 }
-	local rows = { 165, 180 }
+	local cols = { -14, -7, 0, 7, 14 }  -- match CraftingManager spawn grid x=(col-3)*7
+	local rows = { 195, 203 }           -- match BiomeConfig raceStartZ=195, row2 offset +8
 	for ri, z in ipairs(rows) do
 		for ci, x in ipairs(cols) do
 			local idx = (ri - 1) * 5 + ci
 			_part(root, {
 				Name     = "StartBox_" .. idx,
 				Size     = Vector3.new(7, 0.2, 7),
-				Position = Vector3.new(x, 0.6, z),
+				Position = Vector3.new(x, 1.05, z),  -- sit on track surface (track top = 1.0)
 				Color    = Color3.fromRGB(60, 120, 255),
 				Material = MAT.NEON,
 				CanCollide = false,
