@@ -466,38 +466,39 @@ function VehicleBuilder.build(stats, biome, spawnCFrame, slots)
 	_applyStatVisuals(model, stats, palette)
 
 	-- ── Physics drive constraints ─────────────────────────────────────────────
-	-- FOREST/OCEAN: VehicleSeat's built-in Torque/TurnSpeed drive the vehicle
-	--   automatically when a player is seated — no extra constraints needed.
-	-- SKY: VehicleSeat requires ground contact and does nothing aerially, so
-	--   RacingClient drives the flyer via BodyVelocity/BodyAngularVelocity.
+	-- VehicleSeat's built-in Torque/TurnSpeed require Motor6D wheel joints to
+	-- actually propel the vehicle. Without them, ThrottleFloat/SteerFloat are
+	-- set by Roblox from WASD but no force is applied automatically.
+	-- RacingClient reads those values and drives BodyVelocity/BodyAngularVelocity
+	-- every Heartbeat for all biomes.
 
+	local driveVel = Instance.new("BodyVelocity")
+	driveVel.Name     = "DriveVelocity"
+	driveVel.Velocity = Vector3.zero
+	driveVel.MaxForce = Vector3.new(1e4, 0, 1e4)   -- no Y so gravity still acts
+	driveVel.P        = 1e4
+	driveVel.Parent   = primaryPart
+
+	local driveAng = Instance.new("BodyAngularVelocity")
+	driveAng.Name            = "DriveAngular"
+	driveAng.AngularVelocity = Vector3.zero
+	driveAng.MaxTorque       = Vector3.new(0, 1e4, 0)
+	driveAng.P               = 1e4
+	driveAng.Parent          = primaryPart
+
+	-- BodyGyro: resists X/Z tilting so the vehicle stays upright.
+	-- MaxTorque Y=0 so DriveAngular still steers freely.
+	local gyro = Instance.new("BodyGyro")
+	gyro.Name      = "UprightGyro"
+	gyro.CFrame    = CFrame.new()
+	gyro.MaxTorque = Vector3.new(1e5, 0, 1e5)
+	gyro.D         = 200
+	gyro.P         = 1e4
+	gyro.Parent    = primaryPart
+
+	-- SKY only: BodyPosition holds altitude at spawn Y.
+	-- MaxForce Y-only so horizontal BodyVelocity is unaffected.
 	if biome == "SKY" then
-		local driveVel = Instance.new("BodyVelocity")
-		driveVel.Name     = "DriveVelocity"
-		driveVel.Velocity = Vector3.zero
-		driveVel.MaxForce = Vector3.new(1e4, 0, 1e4)
-		driveVel.P        = 1e4
-		driveVel.Parent   = primaryPart
-
-		local driveAng = Instance.new("BodyAngularVelocity")
-		driveAng.Name            = "DriveAngular"
-		driveAng.AngularVelocity = Vector3.zero
-		driveAng.MaxTorque       = Vector3.new(0, 1e4, 0)
-		driveAng.P               = 1e4
-		driveAng.Parent          = primaryPart
-
-		-- BodyGyro: resists X/Z tilting so the flyer stays level.
-		-- MaxTorque Y=0 so DriveAngular still steers freely.
-		local gyro = Instance.new("BodyGyro")
-		gyro.Name      = "UprightGyro"
-		gyro.CFrame    = CFrame.new()
-		gyro.MaxTorque = Vector3.new(1e5, 0, 1e5)
-		gyro.D         = 200
-		gyro.P         = 1e4
-		gyro.Parent    = primaryPart
-
-		-- BodyPosition holds altitude at spawn Y.
-		-- MaxForce Y-only so horizontal BodyVelocity is unaffected.
 		local hover = Instance.new("BodyPosition")
 		hover.Name     = "HoverPosition"
 		hover.Position = spawnCFrame.Position   -- updated after parenting in CraftingManager

@@ -170,57 +170,59 @@ local function _driveLoop()
 	if not _vehicle or not _vehicle.PrimaryPart then return end
 	local primary = _vehicle.PrimaryPart
 
-	if _biome == "SKY" then
-		-- SKY: VehicleSeat has no ground contact, so drive manually via BodyVelocity.
-		local bv  = primary:FindFirstChild("DriveVelocity")
-		local bav = primary:FindFirstChild("DriveAngular")
-		if not bv or not bav then return end
+	local bv  = primary:FindFirstChild("DriveVelocity")
+	local bav = primary:FindFirstChild("DriveAngular")
+	if not bv or not bav then return end
 
-		local throttle = 0
+	local maxSpeed  = _seat and _seat.MaxSpeed  or 40
+	local turnSpeed = _seat and _seat.TurnSpeed or 1
+	local throttle, steer
+
+	if _biome == "SKY" then
+		-- SKY: VehicleSeat has no ground contact — read _keys directly.
+		throttle = 0
 		if _keys.W or _keys.Up   then throttle =  1 end
 		if _keys.S or _keys.Down then throttle = -0.5 end
-
-		local steer = 0
+		steer = 0
 		if _keys.A or _keys.Left  then steer =  1 end
 		if _keys.D or _keys.Right then steer = -1 end
+		turnSpeed = math.min(turnSpeed, 1.5)
 
-		local maxSpeed  = _seat and _seat.MaxSpeed  or 60
-		local turnSpeed = math.min(_seat and _seat.TurnSpeed or 1, 1.5)  -- cap so it doesn't spin
-
-		local forward = primary.CFrame.LookVector
-		bv.Velocity = forward * throttle * maxSpeed
-		bav.AngularVelocity = Vector3.new(0, steer * turnSpeed, 0)
-
-		-- Altitude: Space = 상승, Ctrl = 하강 → HoverPosition 목표 Y를 조절
+		-- Altitude: Space = 상승, Ctrl = 하강
 		local hover = primary:FindFirstChild("HoverPosition")
 		if hover then
-			local altSpeed = 20   -- studs/s
-			local dt = 1 / 60    -- approximate Heartbeat delta
+			local dt = 1 / 60
 			if _keys.Space then
-				hover.Position = hover.Position + Vector3.new(0, altSpeed * dt, 0)
+				hover.Position = hover.Position + Vector3.new(0, 20 * dt, 0)
 			elseif _keys.Ctrl then
-				hover.Position = hover.Position - Vector3.new(0, altSpeed * dt, 0)
+				hover.Position = hover.Position - Vector3.new(0, 20 * dt, 0)
 			end
 		end
-
-		-- Keep UprightGyro tracking current Y so it only fights X/Z tilt.
-		local gyro = primary:FindFirstChild("UprightGyro")
-		if gyro then
-			local _, currentY, _ = primary.CFrame:ToEulerAnglesYXZ()
-			gyro.CFrame = CFrame.fromEulerAnglesYXZ(0, currentY, 0)
-		end
-
 	else
-		-- FOREST/OCEAN: VehicleSeat's built-in Torque/TurnSpeed drive the vehicle.
-		-- This loop only detects drift entry.
+		-- FOREST/OCEAN: VehicleSeat sets ThrottleFloat/SteerFloat from WASD
+		-- automatically when seated. We drive BodyVelocity with those values
+		-- (built-in VehicleSeat locomotion requires Motor6D wheels, which we
+		-- don't have, so we must apply force ourselves).
 		if not _seat then return end
-		local steerFloat = _seat.SteerFloat  -- set automatically by Roblox from A/D input
-		if _keys.Shift and math.abs(steerFloat) > 0.3 and not _drifting then
+		throttle = _seat.ThrottleFloat          -- -1 / 0 / 1
+		steer    = -_seat.SteerFloat            -- flip sign: SteerFloat +1 = right → -Y turn
+
+		-- Drift entry
+		if _keys.Shift and math.abs(_seat.SteerFloat) > 0.3 and not _drifting then
 			local vel = primary.AssemblyLinearVelocity.Magnitude
-			if vel > _seat.MaxSpeed * 0.5 then
-				_enterDrift()
-			end
+			if vel > maxSpeed * 0.5 then _enterDrift() end
 		end
+	end
+
+	local forward = primary.CFrame.LookVector
+	bv.Velocity            = forward * throttle * maxSpeed
+	bav.AngularVelocity    = Vector3.new(0, steer * turnSpeed, 0)
+
+	-- Keep UprightGyro tracking current Y so it only resists X/Z tilt.
+	local gyro = primary:FindFirstChild("UprightGyro")
+	if gyro then
+		local _, currentY, _ = primary.CFrame:ToEulerAnglesYXZ()
+		gyro.CFrame = CFrame.fromEulerAnglesYXZ(0, currentY, 0)
 	end
 end
 
