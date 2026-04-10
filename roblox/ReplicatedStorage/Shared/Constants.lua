@@ -66,6 +66,12 @@ Constants.BOOST_MULTIPLIER = 1.5
 Constants.BOOST_COOLDOWN   = 5
 Constants.POSITION_SYNC_RATE = 0.5  -- seconds between PlayerPositionSync broadcasts
 
+-- ─── Drift / DriftCorner ──────────────────────────────────────────────────────
+-- Driving through a tagged DriftCorner zone fills the boost gauge by this amount.
+-- Key bindings: Shift = drift slide; F = activate boost when gauge is full.
+Constants.DRIFT_CHARGE_PER_CORNER = 0.5   -- 2 corners = full gauge
+Constants.DRIFT_CORNER_COOLDOWN   = 8     -- seconds before same zone charges again
+
 -- ─── Farming Contest (button-mash) ────────────────────────────────────────────
 Constants.CONTEST_DURATION   = 2.5  -- seconds
 Constants.STEAL_COOLDOWN     = 8    -- seconds between steal attempts

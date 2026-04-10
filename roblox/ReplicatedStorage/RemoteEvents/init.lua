@@ -19,6 +19,7 @@
 --   EmoteFired          → (userId: number, emoteId: string)
 --   RaceFinished        → (finishOrder: {userId:number, time:number}[])
 --   ScreenEffect        → (effectName: string, params: table) -- client-side VFX
+--   DriftCharge         → (amount: number)  -- boost gauge fill from DriftCorner zone
 --
 -- RemoteFunctions (server-authoritative):
 --   RequestPickup       → itemId: string          → "ok" | "denied: <reason>"
@@ -47,6 +48,7 @@ local EVENTS = {
 	"EmoteFired",
 	"RaceFinished",
 	"ScreenEffect",
+	"DriftCharge",
 }
 
 local FUNCTIONS = {
