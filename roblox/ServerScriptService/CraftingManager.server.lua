@@ -172,12 +172,15 @@ GameManager.onPhaseChanged(function(phase, biome)
 					if seat then
 						print(string.format("[CraftingManager] Vehicle for %s spawned at %s | seat=%s",
 							player.Name, tostring(primary and primary.Position), tostring(seat)))
-						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
+						-- Seat player BEFORE firing VehicleSpawned so the drive loop
+						-- starts only after the character is already welded to the seat.
 						if player.Character then
 							seat:Sit(player.Character:FindFirstChild("Humanoid"))
 						end
+						task.wait(0.1)  -- let weld settle
+						RemoteEvents.VehicleSpawned:FireClient(player, player.UserId, model)
 						-- Unanchor after sit takes effect so vehicle can move
-						task.wait(0.2)
+						task.wait(0.1)
 						if primary and primary.Parent then
 							primary.Anchored = false
 						end
