@@ -77,8 +77,8 @@ local function _spawnItems(biome)
 	-- Bounding-box inference is unreliable (tall trees skew Y; water planes skew X/Z).
 	local BIOME_ZONES = {
 		FOREST = { cx=0, cz=350, halfX=80, halfZ=120, baseY=2.5 },  -- FarmGround Z:200-500, Y top=1
-		OCEAN  = { cx=0, cz=375, halfX=55, halfZ=90,  baseY=4.5 },  -- FarmIsland Z:250-500, FarmGrass Y top=3
-		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=86  },  -- FarmPlatform Z:320-460, Y=84.5+1.5
+		OCEAN  = { cx=0, cz=375, halfX=55, halfZ=90,  baseY=6.5 },  -- FarmIsland Z:250-500, FarmGrass Y top=5.0 (WATER_Y+2.5+0.5)
+		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=81.5 },  -- FarmPlatform top=80 (SKY_BASE_Y-4.5+4.5=80)
 	}
 
 	-- Always use hardcoded baseY: bounding-box Y is skewed by tall objects (barn, trees).
@@ -136,15 +136,21 @@ local function _spawnItems(biome)
 		table.insert(usedPositions, pos)
 
 		-- Clone pre-built model from ItemModelPreloader (Blender FBX or procedural)
-		local itemModels = ServerStorage:FindFirstChild("ItemModels")
-		local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
 		local model
-		if prebuilt then
-			model        = prebuilt:Clone()
-			model.Parent = mapModel
-		else
-			-- Fallback: build procedurally (shouldn't happen if Preloader ran)
-			model = ItemModelBuilder.build(entry.name, mapModel)
+		local buildOk, buildErr = pcall(function()
+			local itemModels = ServerStorage:FindFirstChild("ItemModels")
+			local prebuilt   = itemModels and itemModels:FindFirstChild(entry.name)
+			if prebuilt then
+				model        = prebuilt:Clone()
+				model.Parent = mapModel
+			else
+				-- Fallback: build procedurally (shouldn't happen if Preloader ran)
+				model = ItemModelBuilder.build(entry.name, mapModel)
+			end
+		end)
+		if not buildOk then
+			warn("[FarmingManager] Spawn error for '" .. entry.name .. "': " .. tostring(buildErr))
+			continue
 		end
 		local primary = model and model.PrimaryPart
 		if not primary then

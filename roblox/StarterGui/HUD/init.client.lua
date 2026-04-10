@@ -19,6 +19,18 @@ screenGui.IgnoreGuiInset = true
 screenGui.Enabled        = false
 screenGui.Parent         = LocalPlayer.PlayerGui
 
+-- ── Drift / Boost key hint ──────────────────────────────────────────────────
+local keyHint = Instance.new("TextLabel")
+keyHint.Name             = "KeyHint"
+keyHint.Size             = UDim2.new(0, 240, 0, 14)
+keyHint.Position         = UDim2.new(0.5, -120, 1, -38)
+keyHint.BackgroundTransparency = 1
+keyHint.Text             = "[ SHIFT = Drift  ·  F = Boost ]"
+keyHint.TextColor3       = Color3.fromRGB(160, 160, 160)
+keyHint.TextScaled       = true
+keyHint.Font             = Enum.Font.Gotham
+keyHint.Parent           = screenGui
+
 -- ── Boost Bar ──────────────────────────────────────────────────────────────
 local boostBar = Instance.new("Frame")
 boostBar.Name            = "BoostBar"

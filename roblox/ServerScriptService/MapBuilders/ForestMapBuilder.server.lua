@@ -688,6 +688,47 @@ local function _buildFinishLine(root)
 	end
 end
 
+-- ─── Drift corner zones ───────────────────────────────────────────────────────
+-- 4 trigger volumes at S-curve apexes. Tagged "DriftCorner" so RacingManager fires
+-- DriftCharge to the player when their vehicle passes through.
+-- Amber neon strips on the track surface visually mark each zone.
+
+local function _buildDriftCorners(root)
+	local corners = {
+		{ NODES[2][1], NODES[2][2] },   -- Z= 45,  X=-22 (first left apex)
+		{ NODES[4][1], NODES[4][2] },   -- Z=-185, X=+20 (right apex)
+		{ NODES[6][1], NODES[6][2] },   -- Z=-415, X=-18 (second left apex)
+		-- midpoint of node 7→8: extra charge zone on final run-in
+		{
+			math.floor((NODES[7][1] + NODES[8][1]) / 2),
+			math.floor((NODES[7][2] + NODES[8][2]) / 2),
+		},
+	}
+	for i, c in ipairs(corners) do
+		local cx, cz = c[1], c[2]
+		-- Amber neon strip (visual)
+		_part(root, {
+			Name         = "DriftStrip_" .. i,
+			Size         = Vector3.new(TRACK_W - 2, 0.2, 38),
+			Position     = Vector3.new(cx, 1.12, cz),
+			Color        = Color3.fromRGB(255, 165, 20),
+			Material     = Enum.Material.Neon,
+			CanCollide   = false,
+			CastShadow   = false,
+			Transparency = 0.55,
+		})
+		-- Invisible trigger (tagged)
+		local trigger = _part(root, {
+			Name         = "DriftCorner_" .. i,
+			Size         = Vector3.new(TRACK_W, 5, 40),
+			Position     = Vector3.new(cx, 3.5, cz),
+			CanCollide   = false,
+			Transparency = 1,
+		})
+		_tag(trigger, "DriftCorner")
+	end
+end
+
 -- ─── Start grid ───────────────────────────────────────────────────────────────
 
 local function _buildStartGrid(root)
@@ -727,6 +768,7 @@ local function buildForest()
 	_buildJumpRamps(trackSub)
 	_buildBoostPads(trackSub)
 	_buildBarriers(trackSub)
+	_buildDriftCorners(trackSub)
 	_buildFinishLine(trackSub)
 	_buildStartGrid(trackSub)
 

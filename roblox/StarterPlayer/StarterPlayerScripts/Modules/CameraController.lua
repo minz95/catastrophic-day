@@ -79,8 +79,14 @@ local function _racingLoop(vehicle)
 		if not vehicle or not vehicle.PrimaryPart then return end
 
 		local primary = vehicle.PrimaryPart
-		local lookDir = primary.CFrame.LookVector
-		local vel     = primary.AssemblyLinearVelocity.Magnitude
+
+		-- SKY flyer fuselage is a Cylinder rotated Ry(π/2):
+		--   its length (local X) → world -Z (forward), but LookVector → world -X (left).
+		--   Use RightVector instead, which equals world -Z for the flyer.
+		local biomeTag = vehicle:FindFirstChild("BiomeTag")
+		local isSky    = biomeTag and biomeTag.Value == "SKY"
+		local lookDir  = isSky and primary.CFrame.RightVector or primary.CFrame.LookVector
+		local vel      = primary.AssemblyLinearVelocity.Magnitude
 
 		-- Dynamic FOV: 70 at rest, up to 90 at max speed
 		local targetFOV = _baseFOV + math.min(vel * 0.12, 20)

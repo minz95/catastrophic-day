@@ -239,16 +239,18 @@ end
 -- Platforms alternate color and have edge glow strips.
 -- { centerX, yOffset, centerZ, width, length }
 
+-- y offsets all 0: vehicle HoverPosition holds constant altitude (raceStartY=84),
+-- height variation was unnavigable. Horizontal X offsets kept for zigzag layout.
 local PLATFORM_DATA = {
-	{ 0,    0,   200,  42, 85  },   -- [1] transition from farm
-	{ 0,   -8,   105,  36, 65  },   -- [2] slight drop
-	{-18,  -18,   15,  36, 65  },   -- [3] drop + shift left (large gap)
-	{ 14,   5,  -90,   36, 65  },   -- [4] rise + shift right
-	{ 0,  -15, -195,  42, 85  },   -- [5] drop, wide section
-	{ 18,   8,  -310,  32, 60  },   -- [6] rise + shift right
-	{-14, -22, -415,  32, 60  },   -- [7] big drop + shift left
-	{  4,   0,  -505,  36, 80  },   -- [8] level out
-	{  0,   5,  -575,  42, 75  },   -- [9] slight rise, near finish
+	{ 0,   0,   200,  42, 85  },   -- [1] transition from farm
+	{ 0,   0,   105,  36, 65  },   -- [2]
+	{-18,  0,    15,  36, 65  },   -- [3] shift left
+	{ 14,  0,   -90,  36, 65  },   -- [4] shift right
+	{ 0,   0,  -195,  42, 85  },   -- [5] wide section
+	{ 18,  0,  -310,  32, 60  },   -- [6] shift right
+	{-14,  0,  -415,  32, 60  },   -- [7] shift left
+	{  4,  0,  -505,  36, 80  },   -- [8]
+	{  0,  0,  -575,  42, 75  },   -- [9] near finish
 }
 
 local function _buildTrackPlatforms(root)
@@ -482,6 +484,73 @@ local function _buildBoostPads(root)
 	end
 end
 
+-- ─── Drift corner rings (SKY) ─────────────────────────────────────────────────
+-- 3 crystal ring gates at the largest platform X-transitions.
+-- Tagged "DriftCorner": flying through gives boost gauge charge (no drift required).
+-- Pink-purple rings distinguish them from yellow obstacle rings.
+
+local function _buildDriftCorners(root)
+	-- 3 largest lateral transitions between platforms:
+	--   pd[3]→pd[4]: X -18→+14 (Δ32), midZ = (15 + -90)/2 = -37
+	--   pd[5]→pd[6]: X  0→+18 (Δ18), midZ = (-195 + -310)/2 = -252
+	--   pd[6]→pd[7]: X +18→-14 (Δ32), midZ = (-310 + -415)/2 = -362
+	local corners = {
+		{
+			x = (PLATFORM_DATA[3][1] + PLATFORM_DATA[4][1]) / 2,
+			y = SKY_BASE_Y + 4,
+			z = (PLATFORM_DATA[3][3] + PLATFORM_DATA[4][3]) / 2,
+		},
+		{
+			x = (PLATFORM_DATA[5][1] + PLATFORM_DATA[6][1]) / 2,
+			y = SKY_BASE_Y + 4,
+			z = (PLATFORM_DATA[5][3] + PLATFORM_DATA[6][3]) / 2,
+		},
+		{
+			x = (PLATFORM_DATA[6][1] + PLATFORM_DATA[7][1]) / 2,
+			y = SKY_BASE_Y + 4,
+			z = (PLATFORM_DATA[6][3] + PLATFORM_DATA[7][3]) / 2,
+		},
+	}
+
+	for i, c in ipairs(corners) do
+		local rx, ry, rz = c.x, c.y, c.z
+		local ringR = 14
+
+		-- 8-segment crystal ring (pink-purple to distinguish from obstacle rings)
+		for seg = 0, 7 do
+			local angle = (seg / 8) * math.pi * 2
+			local arc = _part(root, {
+				Name     = "DriftRingArc_" .. i .. "_" .. seg,
+				Size     = Vector3.new(2, 2, 8),
+				Color    = C.CRYSTAL3,
+				Material = MAT.CRYSTAL,
+				CanCollide = false, CastShadow = false,
+			})
+			arc.CFrame = CFrame.new(rx + math.cos(angle) * ringR, ry + math.sin(angle) * ringR, rz)
+				* CFrame.Angles(0, 0, angle)
+		end
+
+		-- Center star
+		_part(root, {
+			Name     = "DriftRingStar_" .. i,
+			Size     = Vector3.new(4, 4, 0.5),
+			Position = Vector3.new(rx, ry, rz),
+			Color    = C.STAR, Material = MAT.NEON,
+			CanCollide = false, CastShadow = false,
+		})
+
+		-- Invisible trigger (wide box so flyer catches it even at slight Y offset)
+		local trigger = _part(root, {
+			Name         = "DriftCorner_" .. i,
+			Size         = Vector3.new(ringR * 2 + 4, ringR * 2 + 4, 50),
+			Position     = Vector3.new(rx, ry, rz),
+			CanCollide   = false,
+			Transparency = 1,
+		})
+		_tag(trigger, "DriftCorner")
+	end
+end
+
 -- ─── Kill plane ────────────────────────────────────────────────────────────────
 
 local function _buildKillPlane(root)
@@ -574,6 +643,7 @@ local function buildSky()
 	_buildCrystalClusters(trackSub)
 	_buildRingObstacles(trackSub)
 	_buildBoostPads(trackSub)
+	_buildDriftCorners(trackSub)
 	_buildKillPlane(trackSub)
 	_buildFinishLine(trackSub)
 

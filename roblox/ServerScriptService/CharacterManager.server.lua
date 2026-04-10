@@ -19,9 +19,9 @@ local SPAWN_SPACING = 8
 
 -- Biome-specific fallback spawn centres (used when no FarmSpawn tags found in map)
 local BIOME_SPAWN_DEFAULTS = {
-	FOREST = Vector3.new(0,  3,  320),
-	OCEAN  = Vector3.new(0,  3,  320),
-	SKY    = Vector3.new(0, 86,  390),  -- matches SkyMapBuilder SKY_BASE_Y + 4.5 + 1.5
+	FOREST = Vector3.new(0,  3,  320),  -- FarmGround top=1, HRP = top+2
+	OCEAN  = Vector3.new(0,  7,  375),  -- FarmGrass top=5 (WATER_Y+2.5+0.5), HRP = top+2; Z=farm center
+	SKY    = Vector3.new(0, 82,  390),  -- FarmPlatform top=80 (SKY_BASE_Y-4.5+4.5), HRP = top+2
 }
 
 -- Returns CFrame array of spawn points for the given biome.

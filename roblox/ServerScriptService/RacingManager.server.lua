@@ -365,9 +365,35 @@ local function _setupBoostPads()
 	end
 end
 
--- ─── Drift corner reward (FOREST) ────────────────────────────────────────────
--- Drift zones tagged "DriftCorner". Client sends "driftSuccess" event;
--- server validates the player is inside a corner zone and applies slingshot.
+-- ─── Drift corner zones (all biomes) ─────────────────────────────────────────
+-- Parts tagged "DriftCorner" charge the player's boost gauge (F key) when touched.
+-- Per-zone per-player cooldown prevents farming the same corner.
+
+local function _setupDriftCorners()
+	local _cornerCooldowns = {}   -- { [partRef] = { [userId] = expireTick } }
+	for _, part in ipairs(CollectionService:GetTagged("DriftCorner")) do
+		_cornerCooldowns[part] = {}
+		part.Touched:Connect(function(hit)
+			if not _active then return end
+			local vehicle = hit:FindFirstAncestorWhichIsA("Model")
+			if not vehicle then return end
+			for _, player in ipairs(Players:GetPlayers()) do
+				local pdata = SessionManager.getData(player)
+				if pdata and pdata.vehicleModel == vehicle then
+					local cds = _cornerCooldowns[part]
+					local now = tick()
+					if cds[player.UserId] and now < cds[player.UserId] then break end
+					cds[player.UserId] = now + Constants.DRIFT_CORNER_COOLDOWN
+					RemoteEvents.DriftCharge:FireClient(player, Constants.DRIFT_CHARGE_PER_CORNER)
+					break
+				end
+			end
+		end)
+	end
+end
+
+-- ─── Manual boost activation (F key) ─────────────────────────────────────────
+-- Client invokes RequestBoost when boost gauge is full; server applies the speed burst.
 
 RemoteEvents.RequestBoost.OnServerInvoke = function(player)
 	if not _active then return "denied: not racing" end
@@ -404,7 +430,17 @@ end
 -- ─── Finish line ──────────────────────────────────────────────────────────────
 
 local function _setupFinishLine()
-	local finishPart = workspace:FindFirstChild("FinishLine", true)
+	-- Search in the active biome's map first to avoid picking up another biome's sensor.
+	local finishPart
+	if _biome then
+		local mapName   = _biome:sub(1,1):upper() .. _biome:sub(2):lower() .. "Map"
+		local mapsModel = workspace:FindFirstChild("Maps")
+		local biomeMap  = mapsModel and mapsModel:FindFirstChild(mapName)
+		finishPart = biomeMap and biomeMap:FindFirstChild("FinishLine", true)
+	end
+	if not finishPart then
+		finishPart = workspace:FindFirstChild("FinishLine", true)
+	end
 	if not finishPart then
 		warn("[RacingManager] No FinishLine Part found in Workspace")
 		return
@@ -470,6 +506,7 @@ GameManager.onPhaseChanged(function(phase, biome)
 		-- Setup collision systems
 		_setupObstacles()
 		_setupBoostPads()
+		_setupDriftCorners()   -- all biomes: charges boost gauge (F key)
 
 		if biome == "FOREST" then
 			_setupMudZones()
