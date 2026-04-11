@@ -500,47 +500,47 @@ end
 
 -- _buildBigGear removed in #88 (power=8 too low, doesn't read as engine)
 
-local function _buildWindTurbine(root)
-	-- Foundation / base disc
-	local base = _cylinder(root, "Base",
-		0.5 * SCALE, 0.25 * SCALE, Vector3.new(0, -2.0 * SCALE, 0), nil,
-		Color3.fromRGB(160, 155, 150), Enum.Material.SmoothPlastic)
-	-- Tower
-	local tower = _cylinder(root, "Tower",
-		0.18 * SCALE, 3.5 * SCALE, Vector3.new(0, -0.25 * SCALE, 0), nil,
-		Color3.fromRGB(235, 235, 230), Enum.Material.SmoothPlastic)
-	_w(root, base, tower)
-	-- Nacelle (box on top of tower)
-	local nacelle = _p(root, "Nacelle",
-		Vector3.new(0.8 * SCALE, 0.4 * SCALE, 0.4 * SCALE),
-		CFrame.new(0, 1.6 * SCALE, 0),
-		Color3.fromRGB(230, 230, 225), Enum.Material.SmoothPlastic)
-	_w(root, base, nacelle)
-	-- Hub (small sphere in front of nacelle)
-	local hub = _sphere(root, "Hub", 0.18 * SCALE, Vector3.new(0.5 * SCALE, 1.6 * SCALE, 0),
-		Color3.fromRGB(200, 195, 190), Enum.Material.SmoothPlastic)
-	_w(root, base, hub)
-	-- 3 long tapered blades, 120° apart
-	for i = 0, 2 do
-		local angle = (i / 3) * math.pi * 2
-		local bx = math.cos(angle) * 0.9 * SCALE
-		local by = math.sin(angle) * 0.9 * SCALE
-		local blade = _p(root, "Blade" .. i,
-			Vector3.new(0.22 * SCALE, 1.9 * SCALE, 0.08 * SCALE),
-			CFrame.new(0.5 * SCALE + bx, 1.6 * SCALE + by, 0)
-				* CFrame.Angles(0, 0, angle),
-			Color3.fromRGB(235, 235, 225), Enum.Material.SmoothPlastic)
-		_w(root, base, blade)
-		-- Blade tip (darker) — offset 0.95 SCALE = half blade height from blade centre
-		local tip = _p(root, "BladeTip" .. i,
-			Vector3.new(0.14 * SCALE, 0.3 * SCALE, 0.08 * SCALE),
-			CFrame.new(0.5 * SCALE + bx + math.cos(angle + math.pi / 2) * 0.95 * SCALE,
-				1.6 * SCALE + by + math.sin(angle + math.pi / 2) * 0.95 * SCALE, 0)
-				* CFrame.Angles(0, 0, angle),
-			Color3.fromRGB(160, 155, 145), Enum.Material.SmoothPlastic)
-		_w(root, base, tip)
+local function _buildHandMixer(root)
+	-- Motor body (main cylinder)
+	local body = _cylinder(root, "Body",
+		0.55 * SCALE, 1.4 * SCALE, Vector3.new(0, 0, 0), nil,
+		Color3.fromRGB(235, 235, 238), Enum.Material.SmoothPlastic)
+	-- Handle (overlaps body by 0.15 SCALE — embedded joint)
+	local handle = _cylinder(root, "Handle",
+		0.22 * SCALE, 1.3 * SCALE,
+		Vector3.new(0, -0.25 * SCALE, 0.65 * SCALE),
+		CFrame.Angles(math.rad(30), 0, 0),
+		Color3.fromRGB(220, 220, 224), Enum.Material.SmoothPlastic)
+	_w(root, body, handle)
+	-- Speed dial on top (overlaps body top)
+	local dial = _cylinder(root, "Dial",
+		0.18 * SCALE, 0.15 * SCALE,
+		Vector3.new(0.2 * SCALE, 0.75 * SCALE, 0), nil,
+		Color3.fromRGB(180, 180, 184), Enum.Material.SmoothPlastic)
+	_w(root, body, dial)
+	-- Beater socket block at bottom (overlaps body bottom by 0.12 SCALE)
+	local socket = _p(root, "Socket",
+		Vector3.new(0.9 * SCALE, 0.35 * SCALE, 0.55 * SCALE),
+		CFrame.new(0, -0.82 * SCALE, 0),
+		Color3.fromRGB(200, 200, 204), Enum.Material.SmoothPlastic)
+	_w(root, body, socket)
+	-- Two beater rods (start 0.1 SCALE inside socket)
+	for _, sx in ipairs({ -0.22 * SCALE, 0.22 * SCALE }) do
+		local rod = _cylinder(root, "Rod",
+			0.07 * SCALE, 1.1 * SCALE,
+			Vector3.new(sx, -1.45 * SCALE, 0), nil,
+			Color3.fromRGB(190, 188, 185), Enum.Material.Metal)
+		_w(root, body, rod)
+		-- Two coil loops per rod (overlap rod surface)
+		for li, ly in ipairs({ -1.1 * SCALE, -1.45 * SCALE }) do
+			local coil = _cylinder(root, "Coil" .. li,
+				0.18 * SCALE, 0.1 * SCALE,
+				Vector3.new(sx, ly, 0), nil,
+				Color3.fromRGB(185, 183, 180), Enum.Material.Metal)
+			_w(root, body, coil)
+		end
 	end
-	return base
+	return body
 end
 
 local function _buildLeafBlower(root)
@@ -1130,12 +1130,12 @@ local BUILDERS = {
 	["Red Sofa"]       = _buildSofa,
 	["Microwave"]      = _buildMicrowave,
 	["Bathtub"]        = _buildBathtub,
-	-- ENGINE (12): Fan + Wind Turbine added in #89; Shovel + Big Gear removed in #88
+	-- ENGINE (12): Fan + Hand Mixer added in #89/#116; Shovel + Big Gear + Wind Turbine removed
 	["Fan"]            = _buildFan,
 	["Flower"]         = _buildFlower,
 	["Pinwheel"]       = _buildPinwheel,
 	["Watering Can"]   = _buildWateringCan,
-	["Wind Turbine"]   = _buildWindTurbine,
+	["Hand Mixer"]     = _buildHandMixer,
 	["Leaf Blower"]    = _buildLeafBlower,
 	["Spinning Top"]   = _buildSpinningTop,
 	["Propeller"]      = _buildPropeller,
