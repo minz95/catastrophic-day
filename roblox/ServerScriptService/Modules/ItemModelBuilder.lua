@@ -500,46 +500,53 @@ end
 
 -- _buildBigGear removed in #88 (power=8 too low, doesn't read as engine)
 
-local function _buildHandMixer(root)
-	-- Motor body (main cylinder)
+local function _buildDrill(root)
+	-- Horizontal motor body
 	local body = _cylinder(root, "Body",
-		0.55 * SCALE, 1.4 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(235, 235, 238), Enum.Material.SmoothPlastic)
-	-- Handle (overlaps body by 0.15 SCALE — embedded joint)
-	local handle = _cylinder(root, "Handle",
-		0.22 * SCALE, 1.3 * SCALE,
-		Vector3.new(0, -0.25 * SCALE, 0.65 * SCALE),
-		CFrame.Angles(math.rad(30), 0, 0),
-		Color3.fromRGB(220, 220, 224), Enum.Material.SmoothPlastic)
-	_w(root, body, handle)
-	-- Speed dial on top (overlaps body top)
-	local dial = _cylinder(root, "Dial",
-		0.18 * SCALE, 0.15 * SCALE,
-		Vector3.new(0.2 * SCALE, 0.75 * SCALE, 0), nil,
-		Color3.fromRGB(180, 180, 184), Enum.Material.SmoothPlastic)
-	_w(root, body, dial)
-	-- Beater socket block at bottom (overlaps body bottom by 0.12 SCALE)
-	local socket = _p(root, "Socket",
-		Vector3.new(0.9 * SCALE, 0.35 * SCALE, 0.55 * SCALE),
-		CFrame.new(0, -0.82 * SCALE, 0),
-		Color3.fromRGB(200, 200, 204), Enum.Material.SmoothPlastic)
-	_w(root, body, socket)
-	-- Two beater rods (start 0.1 SCALE inside socket)
-	for _, sx in ipairs({ -0.22 * SCALE, 0.22 * SCALE }) do
-		local rod = _cylinder(root, "Rod",
-			0.07 * SCALE, 1.1 * SCALE,
-			Vector3.new(sx, -1.45 * SCALE, 0), nil,
-			Color3.fromRGB(190, 188, 185), Enum.Material.Metal)
-		_w(root, body, rod)
-		-- Two coil loops per rod (overlap rod surface)
-		for li, ly in ipairs({ -1.1 * SCALE, -1.45 * SCALE }) do
-			local coil = _cylinder(root, "Coil" .. li,
-				0.18 * SCALE, 0.1 * SCALE,
-				Vector3.new(sx, ly, 0), nil,
-				Color3.fromRGB(185, 183, 180), Enum.Material.Metal)
-			_w(root, body, coil)
-		end
-	end
+		0.55 * SCALE, 1.8 * SCALE,
+		Vector3.new(0, 0, 0),
+		CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(30, 100, 220), Enum.Material.SmoothPlastic)
+	-- Gear box neck (overlaps body front by 0.12)
+	local neck = _cylinder(root, "Neck",
+		0.4 * SCALE, 0.5 * SCALE,
+		Vector3.new(0.9 * SCALE, 0, 0),
+		CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(25, 80, 180), Enum.Material.SmoothPlastic)
+	_w(root, body, neck)
+	-- Chuck (overlaps neck front by 0.1)
+	local chuck = _cylinder(root, "Chuck",
+		0.32 * SCALE, 0.45 * SCALE,
+		Vector3.new(1.45 * SCALE, 0, 0),
+		CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(80, 80, 85), Enum.Material.Metal)
+	_w(root, body, chuck)
+	-- Drill bit (overlaps chuck front by 0.1)
+	local bit = _cylinder(root, "Bit",
+		0.05 * SCALE, 2.2 * SCALE,
+		Vector3.new(2.75 * SCALE, 0, 0),
+		CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(160, 155, 150), Enum.Material.Metal)
+	_w(root, body, bit)
+	-- Pistol grip (overlaps body bottom by 0.15)
+	local grip = _cylinder(root, "Grip",
+		0.24 * SCALE, 1.3 * SCALE,
+		Vector3.new(0.3 * SCALE, -0.85 * SCALE, 0),
+		CFrame.Angles(math.rad(12), 0, 0),
+		Color3.fromRGB(20, 70, 160), Enum.Material.SmoothPlastic)
+	_w(root, body, grip)
+	-- Trigger (overlaps grip front)
+	local trigger = _p(root, "Trigger",
+		Vector3.new(0.16 * SCALE, 0.36 * SCALE, 0.28 * SCALE),
+		CFrame.new(0.55 * SCALE, -0.6 * SCALE, 0),
+		Color3.fromRGB(15, 55, 130), Enum.Material.SmoothPlastic)
+	_w(root, body, trigger)
+	-- Battery pack at grip bottom
+	local battery = _p(root, "Battery",
+		Vector3.new(0.52 * SCALE, 0.24 * SCALE, 0.44 * SCALE),
+		CFrame.new(0.3 * SCALE, -1.64 * SCALE, 0),
+		Color3.fromRGB(20, 70, 160), Enum.Material.SmoothPlastic)
+	_w(root, body, battery)
 	return body
 end
 
@@ -1135,7 +1142,7 @@ local BUILDERS = {
 	["Flower"]         = _buildFlower,
 	["Pinwheel"]       = _buildPinwheel,
 	["Watering Can"]   = _buildWateringCan,
-	["Hand Mixer"]     = _buildHandMixer,
+	["Drill"]          = _buildDrill,
 	["Leaf Blower"]    = _buildLeafBlower,
 	["Spinning Top"]   = _buildSpinningTop,
 	["Propeller"]      = _buildPropeller,
