@@ -158,10 +158,14 @@ local function _spawnItems(biome)
 			continue
 		end
 
-		-- Position model
+		-- Position model; anchor ALL parts so non-primary parts can't fall/scatter
 		model:SetPrimaryPartCFrame(CFrame.new(pos))
-		primary.Anchored  = true
-		primary.CanCollide = false
+		for _, part in ipairs(model:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored   = true
+				part.CanCollide = false
+			end
+		end
 
 		-- Metadata on PrimaryPart (for pickup detection)
 		local nameVal = Instance.new("StringValue")
@@ -277,8 +281,12 @@ local function _dropItem(player, slotIndex)
 
 	local primary = model.PrimaryPart
 	model:SetPrimaryPartCFrame(CFrame.new(spawnPos))
-	primary.Anchored  = true
-	primary.CanCollide = false
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Anchored   = true
+			part.CanCollide = false
+		end
+	end
 
 	local rarity = cfg and cfg.rarity or "Common"
 
