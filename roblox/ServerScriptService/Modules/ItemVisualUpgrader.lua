@@ -186,18 +186,6 @@ local function _addEpicOrbs(model, primary)
 	end
 end
 
--- ─── Neon edge highlight ─────────────────────────────────────────────────────
-
-local function _addNeonEdge(model, primary, colour)
-	-- Thin neon outline slightly larger than primary
-	local edge = Instance.new("SelectionBox")
-	edge.Adornee    = primary
-	edge.Color3     = colour
-	edge.LineThickness = 0.04
-	edge.SurfaceTransparency = 1
-	edge.Parent     = model
-end
-
 -- ─── Reflectance upgrade ─────────────────────────────────────────────────────
 
 local function _upgradeReflectance(model, reflectance)
@@ -274,7 +262,6 @@ function ItemVisualUpgrader.apply(model, rarity)
 	-- 2. Glow ring (Uncommon+)
 	if cfg.glowParts and cfg.glowColour then
 		_addGlowRing(model, primary, cfg.glowColour)
-		_addNeonEdge(model, primary, cfg.glowColour)
 	end
 
 	-- 3. Particle aura (Rare+)
