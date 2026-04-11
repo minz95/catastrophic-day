@@ -49,7 +49,7 @@ ItemTypes.ALL = {
 	{ name = "Spinning Top",  slotType = "ENGINE" },
 	{ name = "V8 Engine",     slotType = "ENGINE" },
 	{ name = "Watering Can",  slotType = "ENGINE" },
-	{ name = "Hand Mixer",    slotType = "ENGINE" },
+	{ name = "Drill",         slotType = "ENGINE" },
 
 	-- ── SPECIAL (13) ──────────────────────────────────────────────────────────
 	{ name = "Balloon Bunch", slotType = "SPECIAL" },
