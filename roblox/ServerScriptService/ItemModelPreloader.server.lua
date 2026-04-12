@@ -23,8 +23,19 @@ folder.Parent = ServerStorage
 local ItemTypes        = require(game.ReplicatedStorage.Shared.ItemTypes)
 local ItemModelBuilder = require(ServerScriptService.Modules.ItemModelBuilder)
 
--- ItemMeshes: optional folder populated with Blender-imported Models
-local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes")
+-- Debug: list ServerStorage children at runtime
+do
+	local children = ServerStorage:GetChildren()
+	print("[ItemModelPreloader] ServerStorage has", #children, "children:")
+	for _, c in ipairs(children) do
+		print("  -", c.Name, "(", c.ClassName, ")")
+	end
+end
+
+-- ItemMeshes: optional folder populated with Blender-imported Models.
+-- Falls back to searching ServerStorage directly if the subfolder doesn't exist.
+local meshesFolder = ServerStorage:FindFirstChild("ItemMeshes") or ServerStorage
+print("[ItemModelPreloader] meshesFolder =", meshesFolder.Name, "(", meshesFolder.ClassName, ")")
 
 local blenderCount    = 0
 local proceduralCount = 0
@@ -53,6 +64,28 @@ for _, item in ipairs(ItemTypes.ALL) do
 				end
 				if bestPart then
 					clone.PrimaryPart = bestPart
+				end
+			end
+
+			-- Auto-scale: clamp the longest axis to 5 studs so FBX models that were
+			-- exported at a larger Blender unit scale don't appear gigantic in-game.
+			local TARGET_MAX = 5
+			do
+				local allParts = clone:GetDescendants()
+				local maxDim = 0
+				for _, part in ipairs(allParts) do
+					if part:IsA("BasePart") then
+						local s = part.Size
+						maxDim = math.max(maxDim, s.X, s.Y, s.Z)
+					end
+				end
+				if maxDim > TARGET_MAX then
+					local factor = TARGET_MAX / maxDim
+					for _, part in ipairs(allParts) do
+						if part:IsA("BasePart") then
+							part.Size = part.Size * factor
+						end
+					end
 				end
 			end
 

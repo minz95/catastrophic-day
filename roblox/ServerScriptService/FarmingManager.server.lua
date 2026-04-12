@@ -76,9 +76,9 @@ local function _spawnItems(biome)
 	-- Per-biome hardcoded spawn zones that match each MapBuilder's farm area exactly.
 	-- Bounding-box inference is unreliable (tall trees skew Y; water planes skew X/Z).
 	local BIOME_ZONES = {
-		FOREST = { cx=0, cz=350, halfX=80, halfZ=120, baseY=2.5 },  -- FarmGround Z:200-500, Y top=1
-		OCEAN  = { cx=0, cz=375, halfX=55, halfZ=90,  baseY=6.5 },  -- FarmIsland Z:250-500, FarmGrass Y top=5.0 (WATER_Y+2.5+0.5)
-		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=81.5 },  -- FarmPlatform top=80 (SKY_BASE_Y-4.5+4.5=80)
+		FOREST = { cx=0, cz=350, halfX=80, halfZ=120, baseY=1.0 },  -- FarmGround surface Y=1
+		OCEAN  = { cx=0, cz=375, halfX=55, halfZ=90,  baseY=5.0 },  -- FarmGrass surface Y=5 (WATER_Y+2.5+0.5)
+		SKY    = { cx=0, cz=390, halfX=35, halfZ=70,  baseY=80.0 }, -- FarmPlatform surface Y=80
 	}
 
 	-- Always use hardcoded baseY: bounding-box Y is skewed by tall objects (barn, trees).
@@ -158,8 +158,10 @@ local function _spawnItems(biome)
 			continue
 		end
 
-		-- Position model; anchor ALL parts so non-primary parts can't fall/scatter
-		model:SetPrimaryPartCFrame(CFrame.new(pos))
+		-- Position model: place the bottom of PrimaryPart at baseY (surface level).
+		-- Using halfH avoids items sinking into the ground regardless of model size.
+		local halfH = primary.Size.Y * 0.5
+		model:SetPrimaryPartCFrame(CFrame.new(pos.X, pos.Y + halfH, pos.Z))
 		for _, part in ipairs(model:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.Anchored   = true

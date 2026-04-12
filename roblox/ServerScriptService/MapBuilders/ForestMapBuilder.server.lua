@@ -266,7 +266,7 @@ local function _buildTrack(root)
 		})
 		seg.CFrame = cf
 
-		-- White edge lines
+		-- White edge lines + invisible boundary walls
 		for _, side in ipairs({ -1, 1 }) do
 			local edge = _part(root, {
 				Name     = "TrackEdge",
@@ -277,6 +277,16 @@ local function _buildTrack(root)
 				CastShadow = false,
 			})
 			edge.CFrame = cf * CFrame.new(side * (TRACK_W / 2 - 1), 0.05, 0)
+
+			-- Invisible collideable wall at the outer track boundary.
+			-- Prevents vehicles from leaving the lane.
+			local wall = _part(root, {
+				Name         = "TrackBoundary",
+				Size         = Vector3.new(1, 5, segLen),
+				Transparency = 1,
+				CastShadow   = false,
+			})
+			wall.CFrame = cf * CFrame.new(side * (TRACK_W / 2 + 0.5), 2.5, 0)
 		end
 
 		-- Dashed centre line every ~30 studs

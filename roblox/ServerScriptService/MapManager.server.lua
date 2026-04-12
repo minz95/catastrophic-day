@@ -104,10 +104,10 @@ local function _showMap(biome)
 	mapModel:SetAttribute("MapVisible", true)
 	for _, desc in ipairs(mapModel:GetDescendants()) do
 		if desc:IsA("BasePart") then
-			-- Restore transparency to what it was at edit time (stored in attribute)
-			local storedT = desc:GetAttribute("OriginalTransparency")
-			desc.Transparency = storedT ~= nil and storedT or 0
-			desc.CanCollide   = true
+			local storedT  = desc:GetAttribute("OriginalTransparency")
+			local storedCC = desc:GetAttribute("OriginalCanCollide")
+			desc.Transparency = storedT  ~= nil and storedT  or 0
+			desc.CanCollide   = storedCC ~= nil and storedCC or true
 		end
 	end
 	return true
@@ -122,6 +122,9 @@ local function _cacheTransparencies()
 			if desc:IsA("BasePart") then
 				if desc:GetAttribute("OriginalTransparency") == nil then
 					desc:SetAttribute("OriginalTransparency", desc.Transparency)
+				end
+				if desc:GetAttribute("OriginalCanCollide") == nil then
+					desc:SetAttribute("OriginalCanCollide", desc.CanCollide)
 				end
 			end
 		end
@@ -161,9 +164,10 @@ local function _setSubVisible(biome, subName, visible)
 	for _, desc in ipairs(sub:GetDescendants()) do
 		if desc:IsA("BasePart") then
 			if visible then
-				local stored = desc:GetAttribute("OriginalTransparency")
-				desc.Transparency = stored ~= nil and stored or 0
-				desc.CanCollide   = true
+				local storedT  = desc:GetAttribute("OriginalTransparency")
+				local storedCC = desc:GetAttribute("OriginalCanCollide")
+				desc.Transparency = storedT  ~= nil and storedT  or 0
+				desc.CanCollide   = storedCC ~= nil and storedCC or true
 			else
 				desc.Transparency = 1
 				desc.CanCollide   = false
