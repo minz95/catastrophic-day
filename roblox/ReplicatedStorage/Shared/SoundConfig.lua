@@ -127,14 +127,12 @@ SoundConfig.ABILITY_SFX = {
 	gustBlast     = "ABILITY_SPEED",   -- Fan forward gust
 	windHarvest   = "ABILITY_SPEED",   -- Wind Turbine harvest
 	windHarvestSky= "ABILITY_SPEED",   -- Wind Turbine SKY variant
-	fireworkLaunch= "ABILITY_SPEED",   -- Firework speed burst
 	spinBurst     = "ABILITY_SPEED",   -- Spinning Top
 	windRide      = "ABILITY_SPEED",   -- Pinwheel wind ride
 	skateSlide    = "ABILITY_SPEED",   -- Skateboard slide
 	barrelRoll    = "ABILITY_SPEED",   -- Barrel lateral spin
 
 	-- Shield / absorb
-	bubbleShield  = "ABILITY_SHIELD",
 	backpackBlock = "ABILITY_SHIELD",
 	sofaFortress  = "ABILITY_SHIELD",
 	lockdown      = "ABILITY_SHIELD",  -- Suitcase collision immunity
@@ -144,7 +142,6 @@ SoundConfig.ABILITY_SFX = {
 	logObstacle   = "ABILITY_OBSTACLE",
 	noodleSnare   = "ABILITY_OBSTACLE",
 	steamCloud    = "ABILITY_OBSTACLE",
-	oilSlick      = "ABILITY_OBSTACLE", -- Oil Can wide slick
 	waterPuddle   = "ABILITY_OBSTACLE",
 	waterPuddleLarge = "ABILITY_OBSTACLE",
 	slipperyPuddle= "ABILITY_OBSTACLE", -- Pizza slip zone
@@ -170,7 +167,6 @@ SoundConfig.ABILITY_SFX = {
 	umbrellaSail  = "ABILITY_FLOAT",
 
 	-- Generic / misc
-	soundBlast    = "ABILITY_GENERIC",
 	cartRam       = "ABILITY_GENERIC",
 	bathSplash    = "ABILITY_GENERIC",
 	itemAttract   = "ABILITY_GENERIC", -- Flower

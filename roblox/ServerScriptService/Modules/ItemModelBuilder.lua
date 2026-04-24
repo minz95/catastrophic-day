@@ -784,48 +784,7 @@ local function _buildToiletPaper(root)
 end
 
 -- _buildLeaves removed in #88 (redundant track_drop trap alongside Pizza + Cactus)
-
-local function _buildOilCan(root)
-	-- Rounded teardrop body
-	local body = _cylinder(root, "Body",
-		0.7 * SCALE, 1.4 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(140, 100, 40), Enum.Material.Metal)
-	-- Shoulder (top narrowing)
-	local shoulder = _cylinder(root, "Shoulder",
-		0.45 * SCALE, 0.5 * SCALE, Vector3.new(0, 0.9 * SCALE, 0), nil,
-		Color3.fromRGB(130, 90, 35), Enum.Material.Metal)
-	_w(root, body, shoulder)
-	-- Neck
-	local neck = _cylinder(root, "Neck",
-		0.18 * SCALE, 0.45 * SCALE, Vector3.new(0, 1.35 * SCALE, 0), nil,
-		Color3.fromRGB(110, 80, 30), Enum.Material.Metal)
-	_w(root, body, neck)
-	-- Long curved spout
-	local spout = _cylinder(root, "Spout",
-		0.1 * SCALE, 1.2 * SCALE,
-		Vector3.new(0.45 * SCALE, 1.45 * SCALE, 0),
-		CFrame.Angles(0, 0, math.rad(-35)),
-		Color3.fromRGB(100, 75, 25), Enum.Material.Metal)
-	_w(root, body, spout)
-	-- Handle loop (rectangle suggestion)
-	local hBase = _cylinder(root, "HandleBase",
-		0.07 * SCALE, 1.2 * SCALE,
-		Vector3.new(-0.55 * SCALE, 0.3 * SCALE, 0),
-		CFrame.Angles(0, 0, math.rad(20)),
-		Color3.fromRGB(80, 60, 20), Enum.Material.Metal)
-	_w(root, body, hBase)
-	-- Label band (painted stripe)
-	local label = _cylinder(root, "Label",
-		0.72 * SCALE, 0.5 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(200, 60, 30), Enum.Material.SmoothPlastic)
-	_w(root, body, label)
-	-- Dark oil drip (neon accent)
-	local drip = _sphere(root, "Drip", 0.12 * SCALE,
-		Vector3.new(0, -0.8 * SCALE, 0),
-		Color3.fromRGB(20, 20, 20), Enum.Material.Neon)
-	_w(root, body, drip)
-	return body
-end
+-- _buildOilCan removed in SPECIAL overhaul (replaced by Gas Can, FBX-only)
 
 local function _buildRacingFlag(root)
 	local pole = _cylinder(root, "Pole",
@@ -917,85 +876,8 @@ local function _buildMagnet(root)
 	return poleL
 end
 
-local function _buildFirework(root)
-	-- Tube body
-	local tube = _cylinder(root, "Tube",
-		0.35 * SCALE, 2.2 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(200, 50, 50), Enum.Material.SmoothPlastic)
-	-- Label band
-	local band = _cylinder(root, "Band",
-		0.36 * SCALE, 0.6 * SCALE, Vector3.new(0, 0, 0), nil,
-		Color3.fromRGB(240, 210, 40), Enum.Material.SmoothPlastic)
-	_w(root, tube, band)
-	-- Top cap
-	local cap = _cylinder(root, "Cap",
-		0.36 * SCALE, 0.2 * SCALE, Vector3.new(0, 1.2 * SCALE, 0), nil,
-		Color3.fromRGB(160, 30, 30), Enum.Material.SmoothPlastic)
-	_w(root, tube, cap)
-	-- Starburst crown — 8 neon star rays
-	local starColors = {
-		Color3.fromRGB(255, 200, 40), Color3.fromRGB(255, 80, 80),
-		Color3.fromRGB(80, 200, 255), Color3.fromRGB(120, 255, 80),
-		Color3.fromRGB(255, 120, 200), Color3.fromRGB(255, 240, 80),
-		Color3.fromRGB(80, 120, 255), Color3.fromRGB(255, 160, 40),
-	}
-	for i = 0, 7 do
-		local angle = (i / 8) * math.pi * 2
-		local rx = math.cos(angle) * 0.7 * SCALE
-		local rz = math.sin(angle) * 0.7 * SCALE
-		local ray = _sphere(root, "Ray" .. i, 0.18 * SCALE,
-			Vector3.new(rx, 1.55 * SCALE, rz),
-			starColors[i + 1], Enum.Material.Neon)
-		_w(root, tube, ray)
-		local rayStick = _cylinder(root, "RayStick" .. i,
-			0.05 * SCALE, 0.65 * SCALE,
-			Vector3.new(rx * 0.5, 1.45 * SCALE, rz * 0.5),
-			CFrame.Angles(0, 0, math.rad(-90)) * CFrame.Angles(math.rad(angle * 180 / math.pi), 0, 0),
-			starColors[i + 1], Enum.Material.Neon)
-		_w(root, tube, rayStick)
-	end
-	-- Fuse (thin white line at bottom)
-	local fuse = _cylinder(root, "Fuse",
-		0.04 * SCALE, 0.5 * SCALE, Vector3.new(0, -1.35 * SCALE, 0), nil,
-		Color3.fromRGB(240, 230, 180), Enum.Material.SmoothPlastic)
-	_w(root, tube, fuse)
-	-- Fuse glow tip
-	local spark = _sphere(root, "Spark", 0.08 * SCALE, Vector3.new(0, -1.6 * SCALE, 0),
-		Color3.fromRGB(255, 200, 50), Enum.Material.Neon)
-	_w(root, tube, spark)
-	return tube
-end
-
-local function _buildBoombox(root)
-	local body = _p(root, "Body",
-		Vector3.new(2.6 * SCALE, 1.2 * SCALE, 0.8 * SCALE), CFrame.new(0,0,0),
-		Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic)
-	-- Speakers
-	for _, side in ipairs({ -0.7 * SCALE, 0.7 * SCALE }) do
-		local speaker = _cylinder(root, "Speaker",
-			0.45 * SCALE, 0.3 * SCALE,
-			Vector3.new(side, 0, 0.45 * SCALE), nil,
-			Color3.fromRGB(40, 40, 40), Enum.Material.SmoothPlastic)
-		local cone = _cylinder(root, "Cone",
-			0.3 * SCALE, 0.1 * SCALE,
-			Vector3.new(side, 0, 0.5 * SCALE), nil,
-			Color3.fromRGB(60, 60, 60), Enum.Material.SmoothPlastic)
-		_w(root, body, speaker)
-		_w(root, body, cone)
-	end
-	-- Display
-	local disp = _p(root, "Display",
-		Vector3.new(0.8 * SCALE, 0.4 * SCALE, 0.1 * SCALE),
-		CFrame.new(0, 0.2 * SCALE, 0.45 * SCALE),
-		Color3.fromRGB(60, 200, 60), Enum.Material.Neon)
-	local antenna = _cylinder(root, "Antenna",
-		0.05 * SCALE, 1 * SCALE, Vector3.new(-1.1 * SCALE, 0.8 * SCALE, 0),
-		CFrame.Angles(0, 0, math.rad(20)),
-		Color3.fromRGB(160, 160, 160), Enum.Material.Metal)
-	_w(root, body, disp)
-	_w(root, body, antenna)
-	return body
-end
+-- _buildFirework removed in SPECIAL overhaul
+-- _buildBoombox  removed in SPECIAL overhaul
 
 local function _buildUmbrella(root)
 	local handle = _cylinder(root, "Handle",
@@ -1047,23 +929,7 @@ local function _buildRubberDuck(root)
 	return body
 end
 
-local function _buildBubbleWrap(root)
-	local sheet = _p(root, "Sheet",
-		Vector3.new(2 * SCALE, 0.15 * SCALE, 2 * SCALE), CFrame.new(0,0,0),
-		Color3.fromRGB(200, 230, 255), Enum.Material.SmoothPlastic)
-	sheet.Transparency = 0.4
-	for row = 0, 2 do
-		for col = 0, 2 do
-			local bubble = _sphere(root, string.format("Bubble_%d_%d", row, col),
-				0.25 * SCALE,
-				Vector3.new((col - 1) * 0.7 * SCALE, 0.15 * SCALE, (row - 1) * 0.7 * SCALE),
-				Color3.fromRGB(200, 230, 255), Enum.Material.SmoothPlastic)
-			bubble.Transparency = 0.3
-			_w(root, sheet, bubble)
-		end
-	end
-	return sheet
-end
+-- _buildBubbleWrap removed in SPECIAL overhaul
 
 local function _buildBalloonBunch(root)
 	local string_main = _cylinder(root, "String",
@@ -1150,18 +1016,15 @@ local BUILDERS = {
 	["Rocket"]         = _buildRocket,
 	["Cup Noodle"]     = _buildCupNoodle,
 	["Kettle"]         = _buildKettle,
-	-- SPECIAL (13): Oil Can + Magnet + Firework added in #89; Leaves + Scarf + Rocket Boost removed in #88
-	["Oil Can"]        = _buildOilCan,
+	-- SPECIAL (14): Oil Can/Boombox/Bubble Wrap/Firework removed in SPECIAL overhaul;
+	-- Gas Can/Lantern/Camera/Magic Wand/Trophy use FBX-only (fallback = labeled cube)
 	["Pizza"]          = _buildPizza,
 	["Toilet Paper"]   = _buildToiletPaper,
 	["Racing Flag"]    = _buildRacingFlag,
 	["Cactus"]         = _buildCactus,
 	["Magnet"]         = _buildMagnet,
-	["Firework"]       = _buildFirework,
-	["Boombox"]        = _buildBoombox,
 	["Umbrella"]       = _buildUmbrella,
 	["Rubber Duck"]    = _buildRubberDuck,
-	["Bubble Wrap"]    = _buildBubbleWrap,
 	["Balloon Bunch"]  = _buildBalloonBunch,
 	["Soda Bottle"]    = _buildSodaBottle,
 }

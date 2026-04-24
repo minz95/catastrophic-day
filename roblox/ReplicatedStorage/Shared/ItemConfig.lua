@@ -270,13 +270,18 @@ ItemConfig["Kettle"] = {
 
 -- Leaves removed in #88: third track_drop trap alongside Pizza and Cactus — pure redundancy
 -- Scarf  removed in #88: boring Blender shape; steerHinder not communicated visually by a scarf
+-- Oil Can, Boombox, Bubble Wrap, Firework removed in SPECIAL overhaul:
+--   Oil Can → replaced by Gas Can (same slick mechanic, clearer silhouette)
+--   Boombox → removed (soundBlast effect redundant with microFreeze)
+--   Bubble Wrap → removed (bubbleShield never wired to physState in RacingManager)
+--   Firework → removed (speed-burst role covered by Soda Bottle + new Magic Wand)
 
-ItemConfig["Oil Can"] = {
+ItemConfig["Gas Can"] = {
 	slotType   = "SPECIAL",
 	rarity     = R.COMMON,
 	boost      = 12,
-	icon       = "🛢️",
-	shape      = "oilcan",
+	icon       = "⛽",
+	shape      = "gascan",
 }
 
 ItemConfig["Pizza"] = {
@@ -319,12 +324,28 @@ ItemConfig["Racing Flag"] = {
 	shape      = "flag",
 }
 
-ItemConfig["Boombox"] = {
+ItemConfig["Lantern"] = {
+	slotType   = "SPECIAL",
+	rarity     = R.COMMON,
+	boost      = 15,
+	icon       = "🏮",
+	shape      = "lantern",
+}
+
+ItemConfig["Camera"] = {
+	slotType   = "SPECIAL",
+	rarity     = R.UNCOMMON,
+	boost      = 25,
+	icon       = "📸",
+	shape      = "camera",
+}
+
+ItemConfig["Magic Wand"] = {
 	slotType   = "SPECIAL",
 	rarity     = R.RARE,
-	boost      = 40,
-	icon       = "📻",
-	shape      = "boombox",
+	boost      = 45,
+	icon       = "🪄",
+	shape      = "wand",
 }
 
 ItemConfig["Umbrella"] = {
@@ -344,21 +365,12 @@ ItemConfig["Rubber Duck"] = {
 	shape      = "duck",
 }
 
-ItemConfig["Bubble Wrap"] = {
+ItemConfig["Trophy"] = {
 	slotType   = "SPECIAL",
-	rarity     = R.RARE,
-	boost      = 55,
-	icon       = "💠",
-	shape      = "bubblewrap",
-}
-
-ItemConfig["Firework"] = {
-	slotType   = "SPECIAL",
-	rarity     = R.RARE,
-	boost      = 50,
-	icon       = "🎆",
-	shape      = "firework",
-	biomeBonus = { SKY = 1.20 },
+	rarity     = R.EPIC,
+	boost      = 70,
+	icon       = "🏆",
+	shape      = "trophy",
 }
 
 ItemConfig["Balloon Bunch"] = {

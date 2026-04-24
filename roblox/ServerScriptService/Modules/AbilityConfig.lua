@@ -125,17 +125,6 @@ AbilityConfig["Racing Flag"] = {
 	uiHint      = "🏁 Rally!",
 }
 
-AbilityConfig["Boombox"] = {
-	cooldown    = 20,
-	duration    = 1,
-	targetType  = "all_in_radius",
-	radius      = 15,
-	effectKey   = "soundBlast",    -- camera shake + 1s control inversion on targets
-	animKey     = "boomboxPulse",
-	sfxKey      = "boombox_blast",
-	uiHint      = "📻 BOOM!",
-}
-
 AbilityConfig["Cactus"] = {
 	cooldown    = 12,
 	duration    = 1.5,
@@ -148,15 +137,57 @@ AbilityConfig["Cactus"] = {
 
 -- Leaves removed in #88 (redundant trap)
 -- Scarf  removed in #88 (shape doesn't communicate steerHinder)
+-- Oil Can, Boombox, Bubble Wrap, Firework removed in SPECIAL overhaul
+-- (see ItemConfig comment). Gas Can inherits the slippery-puddle role below.
 
-AbilityConfig["Oil Can"] = {
+AbilityConfig["Gas Can"] = {
 	cooldown    = 12,
 	duration    = 3,
 	targetType  = "track_drop",
-	effectKey   = "oilSlick",      -- wide slippery zone; longer than Pizza
-	animKey     = "pourOilCan",
-	sfxKey      = "oil_pour",
-	uiHint      = "🛢️ Slick!",
+	effectKey   = "slipperyPuddle", -- reuses Pizza's slick effect; Gas Can is the new Common trap
+	animKey     = "pourGasCan",
+	sfxKey      = "gas_pour",
+	uiHint      = "⛽ Slick!",
+}
+
+AbilityConfig["Lantern"] = {
+	cooldown    = 15,
+	duration    = 3,
+	targetType  = "self",
+	effectKey   = "rise",          -- brief lift, reuses Balloon Bunch rise logic
+	animKey     = "lanternGlow",
+	sfxKey      = "lantern_chime",
+	uiHint      = "🏮 Lift!",
+}
+
+AbilityConfig["Camera"] = {
+	cooldown    = 14,
+	duration    = 2,
+	targetType  = "nearest",
+	effectKey   = "steerDisable",  -- flash blinds nearest; reuses Toilet Paper effect
+	animKey     = "cameraFlash",
+	sfxKey      = "camera_flash",
+	uiHint      = "📸 Flash!",
+}
+
+AbilityConfig["Magic Wand"] = {
+	cooldown    = 15,
+	duration    = 1.5,
+	targetType  = "self",
+	effectKey   = "rocketBurst",   -- magic speed burst; reuses Rocket effect
+	animKey     = "wandCast",
+	sfxKey      = "wand_sparkle",
+	uiHint      = "🪄 Cast!",
+}
+
+AbilityConfig["Trophy"] = {
+	cooldown    = 22,
+	duration    = 5,
+	targetType  = "self",          -- also buffs nearest ally (handled in flagAura)
+	effectKey   = "flagAura",      -- champion's aura; reuses Racing Flag effect
+	animKey     = "trophyRaise",
+	sfxKey      = "trophy_cheer",
+	uiHint      = "🏆 Rally!",
 }
 
 AbilityConfig["Magnet"] = {
@@ -168,19 +199,6 @@ AbilityConfig["Magnet"] = {
 	sfxKey      = "magnet_hum",
 	uiHint      = "🧲 Pull!",
 	-- hold input → repel variant (handled in effectKey server-side)
-}
-
-AbilityConfig["Firework"] = {
-	cooldown    = 16,
-	duration    = 2,
-	targetType  = "self",
-	effectKey   = "fireworkLaunch", -- speed burst + particle explosion
-	animKey     = "fireworkBlast",
-	sfxKey      = "firework_pop",
-	uiHint      = "🎆 LAUNCH!",
-	biomeEffect = {
-		SKY = { duration = 3.5 },   -- longer air time in SKY biome
-	},
 }
 
 AbilityConfig["Umbrella"] = {
@@ -196,16 +214,6 @@ AbilityConfig["Umbrella"] = {
 		OCEAN  = { effectKey = "umbrellaSail",   duration = 4 },   -- side-wind speed bonus
 		SKY    = { effectKey = "parachute",      duration = 6 },   -- fall at 20% speed
 	},
-}
-
-AbilityConfig["Bubble Wrap"] = {
-	cooldown    = 20,
-	duration    = nil,             -- instant: one-time shield
-	targetType  = "self",
-	effectKey   = "bubbleShield",  -- absorb next collision; pop → small area push
-	animKey     = "bubbleShieldOn",
-	sfxKey      = "bubblewrap_pop",
-	uiHint      = "💠 Shield!",
 }
 
 -- ── ENGINE tier ───────────────────────────────────────────────────────────────

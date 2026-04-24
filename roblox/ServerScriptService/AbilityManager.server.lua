@@ -200,22 +200,7 @@ EFFECTS.flagAura = function(activator, _, cfg)
 	RemoteEvents.AbilityActivated:FireAllClients(activator.UserId, "Racing Flag", {})
 end
 
-EFFECTS.soundBlast = function(activator, _, cfg)
-	local targets = _allInRadius(activator, cfg.radius or 15)
-	for _, target in ipairs(targets) do
-		local tv = _getVehicle(target)
-		local seat = _getSeat(tv)
-		if seat then
-			local old = seat.SteerFloat
-			seat.TurnSpeed = -seat.TurnSpeed   -- invert
-			RemoteEvents.ScreenEffect:FireClient(target, "soundBlast",
-				{ duration = cfg.duration })
-			task.delay(cfg.duration, function()
-				if seat and seat.Parent then seat.TurnSpeed = -seat.TurnSpeed end
-			end)
-		end
-	end
-end
+-- EFFECTS.soundBlast removed in SPECIAL overhaul (was only used by Boombox)
 
 EFFECTS.cactusObstacle = function(activator, _, cfg)
 	local vehicle = _getVehicle(activator)
@@ -282,11 +267,8 @@ EFFECTS.parachute = function(activator, _, cfg)
 	_applySpeedMult(vehicle, 0.5, cfg.duration)   -- drift down slowly
 end
 
-EFFECTS.bubbleShield = function(activator, _, cfg)
-	local pdata = SessionManager.getData(activator)
-	if pdata then pdata._bubbleShield = true end
-	RemoteEvents.AbilityActivated:FireAllClients(activator.UserId, "Bubble Wrap", {})
-end
+-- EFFECTS.bubbleShield removed in SPECIAL overhaul (was only used by Bubble Wrap;
+-- Umbrella's umbrellaBlock still writes pdata._bubbleShield for legacy reasons)
 
 -- ── ENGINE ────────────────────────────────────────────────────────────────────
 

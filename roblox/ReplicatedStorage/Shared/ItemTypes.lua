@@ -51,14 +51,15 @@ ItemTypes.ALL = {
 	{ name = "Magnifying Glass", slotType = "ENGINE" },
 	{ name = "Drill",         slotType = "ENGINE" },
 
-	-- ── SPECIAL (13) ──────────────────────────────────────────────────────────
+	-- ── SPECIAL (14) ──────────────────────────────────────────────────────────
 	{ name = "Balloon Bunch", slotType = "SPECIAL" },
-	{ name = "Boombox",       slotType = "SPECIAL" },
-	{ name = "Bubble Wrap",   slotType = "SPECIAL" },
+	{ name = "Camera",        slotType = "SPECIAL" },
 	{ name = "Cactus",        slotType = "SPECIAL" },
-	{ name = "Firework",      slotType = "SPECIAL" },
+	{ name = "Trophy",        slotType = "SPECIAL" },
+	{ name = "Lantern",       slotType = "SPECIAL" },
+	{ name = "Magic Wand",    slotType = "SPECIAL" },
 	{ name = "Magnet",        slotType = "SPECIAL" },
-	{ name = "Oil Can",       slotType = "SPECIAL" },
+	{ name = "Gas Can",       slotType = "SPECIAL" },
 	{ name = "Pizza",         slotType = "SPECIAL" },
 	{ name = "Racing Flag",   slotType = "SPECIAL" },
 	{ name = "Rubber Duck",   slotType = "SPECIAL" },

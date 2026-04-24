@@ -26,7 +26,7 @@ local _totalRacers = 0
 -- Per-player physics state
 -- _physState[userId] = {
 --   inMud=false, inUpdraft=false, boostCooldownEnd=0,
---   obstaclePenaltyEnd=0, bubbleShield=false, drifting=false,
+--   obstaclePenaltyEnd=0, drifting=false,
 --   vehicle=Model, seat=VehicleSeat
 -- }
 local _physState = {}
@@ -292,13 +292,6 @@ local function _setupObstacles()
 					local ps = _physState[player.UserId]
 					if not ps or tick() < (ps.obstaclePenaltyEnd or 0) then break end
 
-					-- Bubble Wrap absorbs one hit
-					if ps.bubbleShield then
-						ps.bubbleShield = false
-						RemoteEvents.ScreenEffect:FireClient(player, "bubblePop", {})
-						break
-					end
-
 					ps.obstaclePenaltyEnd = tick() + Constants.OBSTACLE_BOUNCE_PENALTY_DURATION
 
 					-- Apply bounce impulse
@@ -497,7 +490,6 @@ GameManager.onPhaseChanged(function(phase, biome)
 				inUpdraft         = false,
 				boostCooldownEnd  = 0,
 				obstaclePenaltyEnd = 0,
-				bubbleShield      = false,
 				drifting          = false,
 				vehicle           = pdata and pdata.vehicleModel,
 			}

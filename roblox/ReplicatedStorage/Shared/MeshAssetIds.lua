@@ -36,19 +36,20 @@ local MeshAssetIds = {
 	["Wind Turbine"]   = "",   -- assets/items/wind_turbine.fbx
 
 	-- ── SPECIAL ───────────────────────────────────────────────────────────────
-	["Balloon Bunch"]  = "",   -- assets/items/balloon_bunch.fbx
-	["Boombox"]        = "",   -- assets/items/boombox.fbx
-	["Bubble Wrap"]    = "",   -- assets/items/bubble_wrap.fbx
-	["Cactus"]         = "",   -- assets/items/cactus.fbx
-	["Firework"]       = "",   -- assets/items/firework.fbx
-	["Magnet"]         = "",   -- assets/items/magnet.fbx
-	["Oil Can"]        = "",   -- assets/items/oil_can.fbx
-	["Pizza"]          = "",   -- assets/items/pizza.fbx
-	["Racing Flag"]    = "",   -- assets/items/racing_flag.fbx
-	["Rubber Duck"]    = "",   -- assets/items/rubber_duck.fbx
-	["Soda Bottle"]    = "",   -- assets/items/soda_bottle.fbx
-	["Toilet Paper"]   = "",   -- assets/items/toilet_paper.fbx
-	["Umbrella"]       = "",   -- assets/items/umbrella.fbx
+	["Balloon Bunch"]  = "",   -- assets/items/Balloon Bunch.fbx
+	["Cactus"]         = "",   -- assets/items/Cactus.fbx
+	["Camera"]         = "",   -- assets/items/Camera.fbx
+	["Gas Can"]        = "",   -- assets/items/Gas Can.fbx
+	["Lantern"]        = "",   -- assets/items/Lantern.fbx
+	["Magic Wand"]     = "",   -- assets/items/Magic Wand.fbx
+	["Magnet"]         = "",   -- assets/items/Magnet.fbx
+	["Pizza"]          = "",   -- assets/items/Pizza.fbx
+	["Racing Flag"]    = "",   -- assets/items/Racing Flag.fbx
+	["Rubber Duck"]    = "",   -- assets/items/Rubber Duck.fbx
+	["Soda Bottle"]    = "",   -- assets/items/Soda Bottle.fbx
+	["Toilet Paper"]   = "",   -- assets/items/Toilet Paper.fbx
+	["Trophy"]         = "",   -- assets/items/Trophy.fbx
+	["Umbrella"]       = "",   -- assets/items/Umbrella.fbx
 }
 
 return MeshAssetIds

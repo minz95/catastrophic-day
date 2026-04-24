@@ -207,7 +207,6 @@ VehicleStats.TAIL_PASSIVES = {
 	["Toilet Paper"]   = { slipstreamSlow = 0.10 },      -- -10% to car directly behind
 	["Balloon Bunch"]  = { rearImpactAbsorb = true },   -- bumper absorbs rear hit
 	["Cactus"]         = { rearContactSlow = 1.5 },      -- slows anyone who rear-ends you
-	["Boombox"]        = { passiveShake = 10 },          -- radius in studs
 }
 
 return VehicleStats
