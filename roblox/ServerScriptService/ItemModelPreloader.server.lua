@@ -46,6 +46,11 @@ for _, item in ipairs(ItemTypes.ALL) do
 	-- 1. Try Blender-imported mesh from ItemMeshes
 	if meshesFolder then
 		local mesh = meshesFolder:FindFirstChild(name)
+		if not mesh then
+			-- Fallback: Blender FBX exports use snake_case object names
+			-- (e.g. "Rubber Duck" → "rubber_duck"). Try that too.
+			mesh = meshesFolder:FindFirstChild(name:lower():gsub(" ", "_"))
+		end
 		if mesh then
 			local clone = mesh:Clone()
 			clone.Name = name
@@ -67,23 +72,38 @@ for _, item in ipairs(ItemTypes.ALL) do
 				end
 			end
 
-			-- Auto-scale: clamp the longest axis to 5 studs so FBX models that were
-			-- exported at a larger Blender unit scale don't appear gigantic in-game.
+			-- Auto-scale: clamp the model's overall extent to TARGET_MAX studs.
+			-- Scales each part's Size AND Position proportionally around the model's
+			-- centroid so spacing between parts shrinks with size (otherwise parts
+			-- stay at their original world-scale offsets and appear scattered in-game).
 			local TARGET_MAX = 5
 			do
 				local allParts = clone:GetDescendants()
-				local maxDim = 0
+				local basePartCount = 0
+				local minV = Vector3.new(math.huge, math.huge, math.huge)
+				local maxV = Vector3.new(-math.huge, -math.huge, -math.huge)
 				for _, part in ipairs(allParts) do
 					if part:IsA("BasePart") then
-						local s = part.Size
-						maxDim = math.max(maxDim, s.X, s.Y, s.Z)
+						basePartCount = basePartCount + 1
+						local p = part.Position
+						local h = part.Size * 0.5
+						minV = Vector3.new(math.min(minV.X, p.X - h.X), math.min(minV.Y, p.Y - h.Y), math.min(minV.Z, p.Z - h.Z))
+						maxV = Vector3.new(math.max(maxV.X, p.X + h.X), math.max(maxV.Y, p.Y + h.Y), math.max(maxV.Z, p.Z + h.Z))
 					end
 				end
-				if maxDim > TARGET_MAX then
-					local factor = TARGET_MAX / maxDim
-					for _, part in ipairs(allParts) do
-						if part:IsA("BasePart") then
-							part.Size = part.Size * factor
+				if basePartCount > 0 then
+					local extent = maxV - minV
+					local maxDim = math.max(extent.X, extent.Y, extent.Z)
+					if maxDim > TARGET_MAX then
+						local factor = TARGET_MAX / maxDim
+						local center = (minV + maxV) * 0.5
+						for _, part in ipairs(allParts) do
+							if part:IsA("BasePart") then
+								part.Size = part.Size * factor
+								local rot = part.CFrame - part.CFrame.Position
+								local newPos = center + (part.Position - center) * factor
+								part.CFrame = rot + newPos
+							end
 						end
 					end
 				end

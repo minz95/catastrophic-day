@@ -1,1 +1,4 @@
 .DS_Store
+
+# Blender FBX import texture cache
+*.fbm/

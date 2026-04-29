@@ -69,7 +69,8 @@ local function _dropPart(position, size, colour, tag, duration)
 	p.CFrame   = CFrame.new(position)
 	p.Anchored = true
 	p.Color    = colour
-	p.CanCollide = true
+	-- Slippery zones / visual clouds are pass-through; obstacles stay solid.
+	p.CanCollide = not (tag == "Slippery" or tag == "SteamCloud")
 	p.Parent   = workspace
 	if tag then
 		local t = Instance.new("StringValue")
