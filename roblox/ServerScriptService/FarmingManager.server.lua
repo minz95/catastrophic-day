@@ -158,12 +158,24 @@ local function _spawnItems(biome)
 			continue
 		end
 
-		-- Position model: place the bottom of PrimaryPart at baseY (surface level).
-		-- Using halfH avoids items sinking into the ground regardless of model size.
-		local halfH = primary.Size.Y * 0.5
-		model:SetPrimaryPartCFrame(CFrame.new(pos.X, pos.Y + halfH, pos.Z))
+		-- Position model: align the model's overall bottom (lowest point of any
+		-- BasePart) with baseY, X/Z centered on pos. Pure translation only —
+		-- SetPrimaryPartCFrame/PivotTo don't move FBX-imported nested parts.
+		local minBottomY = math.huge
 		for _, part in ipairs(model:GetDescendants()) do
 			if part:IsA("BasePart") then
+				local b = part.Position.Y - part.Size.Y * 0.5
+				if b < minBottomY then minBottomY = b end
+			end
+		end
+		local deltaPos = Vector3.new(
+			pos.X - primary.Position.X,
+			pos.Y - minBottomY,
+			pos.Z - primary.Position.Z
+		)
+		for _, part in ipairs(model:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CFrame     = part.CFrame + deltaPos
 				part.Anchored   = true
 				part.CanCollide = false
 			end
@@ -282,9 +294,21 @@ local function _dropItem(player, slotIndex)
 	end
 
 	local primary = model.PrimaryPart
-	model:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+	local minBottomY = math.huge
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") then
+			local b = part.Position.Y - part.Size.Y * 0.5
+			if b < minBottomY then minBottomY = b end
+		end
+	end
+	local deltaPos = Vector3.new(
+		spawnPos.X - primary.Position.X,
+		spawnPos.Y - minBottomY,
+		spawnPos.Z - primary.Position.Z
+	)
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CFrame     = part.CFrame + deltaPos
 			part.Anchored   = true
 			part.CanCollide = false
 		end

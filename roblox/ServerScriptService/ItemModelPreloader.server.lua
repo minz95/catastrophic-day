@@ -72,11 +72,11 @@ for _, item in ipairs(ItemTypes.ALL) do
 				end
 			end
 
-			-- Auto-scale: clamp the model's overall extent to TARGET_MAX studs.
+			-- Normalize size: always scale model so its longest axis = TARGET_MAX studs.
 			-- Scales each part's Size AND Position proportionally around the model's
-			-- centroid so spacing between parts shrinks with size (otherwise parts
-			-- stay at their original world-scale offsets and appear scattered in-game).
-			local TARGET_MAX = 5
+			-- centroid so spacing between parts scales with size, and so items
+			-- imported at vastly different source scales appear consistent in-game.
+			local TARGET_MAX = 4
 			do
 				local allParts = clone:GetDescendants()
 				local basePartCount = 0
@@ -94,17 +94,28 @@ for _, item in ipairs(ItemTypes.ALL) do
 				if basePartCount > 0 then
 					local extent = maxV - minV
 					local maxDim = math.max(extent.X, extent.Y, extent.Z)
-					if maxDim > TARGET_MAX then
+					if maxDim > 0 then
 						local factor = TARGET_MAX / maxDim
 						local center = (minV + maxV) * 0.5
+						-- Force a minimum thickness on each axis: FBX import sometimes
+						-- produces zero-thickness meshes (paper-thin slices, ring rims),
+						-- and Roblox renders such BaseParts as invisible from the side.
+						local MIN_AXIS = 0.1
 						for _, part in ipairs(allParts) do
 							if part:IsA("BasePart") then
-								part.Size = part.Size * factor
+								local s = part.Size * factor
+								part.Size = Vector3.new(
+									math.max(s.X, MIN_AXIS),
+									math.max(s.Y, MIN_AXIS),
+									math.max(s.Z, MIN_AXIS)
+								)
 								local rot = part.CFrame - part.CFrame.Position
 								local newPos = center + (part.Position - center) * factor
 								part.CFrame = rot + newPos
 							end
 						end
+						print(string.format("[Preloader/v2] %s: bbox %.1fx%.1fx%.1f → factor=%.3f → maxDim=%.2f (parts=%d)",
+							name, extent.X, extent.Y, extent.Z, factor, maxDim * factor, basePartCount))
 					end
 				end
 			end
@@ -133,6 +144,28 @@ for _, item in ipairs(ItemTypes.ALL) do
 
 			clone.Parent = folder
 			blenderCount = blenderCount + 1
+
+			-- One-time diagnostic: dump part details for select multipart items.
+			-- Concatenate into a single print so Studio Output doesn't throttle.
+			local DEBUG_DUMP = {["Pizza"]=true, ["Lantern"]=true}
+			if DEBUG_DUMP[name] then
+				local lines = {string.format("[Diag/Parts] %s — PrimaryPart=%s", name, primary and primary.Name or "nil")}
+				for _, p in ipairs(clone:GetDescendants()) do
+					if p:IsA("BasePart") then
+						local mc = ""
+						if p:IsA("MeshPart") then
+							mc = string.format(" | Mesh=%s", tostring(p.MeshId or "<none>"))
+						end
+						table.insert(lines, string.format("  %s | Cls=%s | Size=%.2f,%.2f,%.2f | Pos=%.2f,%.2f,%.2f | Trans=%.2f | Color=%d,%d,%d%s",
+							p.Name, p.ClassName, p.Size.X, p.Size.Y, p.Size.Z,
+							p.Position.X, p.Position.Y, p.Position.Z,
+							p.Transparency,
+							math.floor(p.Color.R*255), math.floor(p.Color.G*255), math.floor(p.Color.B*255),
+							mc))
+					end
+				end
+				print(table.concat(lines, "\n"))
+			end
 			continue
 		end
 	end

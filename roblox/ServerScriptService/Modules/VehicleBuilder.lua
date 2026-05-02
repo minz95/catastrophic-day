@@ -89,12 +89,17 @@ local function itemVisual(itemName, attachCF, model)
 	local tmpl      = templates and templates:FindFirstChild(itemName)
 	if tmpl and tmpl.PrimaryPart then
 		local clone = tmpl:Clone()
-		clone:SetPrimaryPartCFrame(attachCF)
-		clone.Parent = model
-		-- All item parts must be non-collidable and welded to vehicle primary
+		-- Manual delta translation — SetPrimaryPartCFrame/PivotTo don't move
+		-- FBX-imported nested parts in this codebase's mesh structure.
+		local primary = clone.PrimaryPart
+		local delta   = attachCF * primary.CFrame:Inverse()
 		for _, p in ipairs(clone:GetDescendants()) do
-			if p:IsA("BasePart") then p.CanCollide = false end
+			if p:IsA("BasePart") then
+				p.CFrame     = delta * p.CFrame
+				p.CanCollide = false
+			end
 		end
+		clone.Parent = model
 		return clone.PrimaryPart
 	end
 
