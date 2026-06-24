@@ -318,7 +318,12 @@ end
 -- Inside the S2 arc, X≈+90 Z≈0; island prevents straight-line shortcut.
 
 local function _buildPalmIsland(root)
-	local cx, cz = 90, 0  -- inside the arc's east bulge
+	-- Shifted west from cx=90 to cx=40 so the island's east edge (45) sits
+	-- well inside the chord but doesn't intrude into the S2 arc nodes.
+	-- The arc passes through N4(140, 100); with cx=90 (east edge 145) the
+	-- arc clipped 5 stud into the island and boats couldn't reach CP1 at N5.
+	-- New east edge: 40 + 110/2 = 95, giving N4 a 45-stud clearance.
+	local cx, cz = 40, 0
 	_part(root, {
 		Name = "Palm_IslandBase", Size = Vector3.new(110, 8, 220),
 		Position = Vector3.new(cx, WATER_Y - 2, cz),
@@ -536,10 +541,14 @@ local function _buildFarmIsland(root)
 		Position = Vector3.new(cx, WATER_Y - 1, cz),
 		Color = C.SAND, Material = MAT.SAND,
 	})
+	-- SmoothPlastic (not Grass) — Material.Grass renders blades that survive
+	-- MapManager's Transparency=1 hide, so during racing the FarmGrass blades
+	-- were still bleeding through onto the channel water, making OCEAN look
+	-- like a swamp. Same workaround applied to PalmIslandTop earlier.
 	_part(root, {
 		Name = "FarmGrass", Size = Vector3.new(160, 1, 230),
 		Position = Vector3.new(cx, WATER_Y + 2.5, cz),
-		Color = C.GRASS, Material = MAT.GRASS,
+		Color = C.GRASS, Material = Enum.Material.SmoothPlastic,
 	})
 
 	local cols = { -60, -30, 0, 30, 60 }

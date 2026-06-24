@@ -87,9 +87,13 @@ local function _paintOcean()
 	-- Water volume
 	_fillBox(0, -8, 0, 600, 16, 1600, TM.Water)
 
-	-- Farm island sand base
-	_fillBox(0, -4, 375, 170, 8, 270, TM.Sand)
-	_fillBox(0, 2, 375, 140, 2, 230, TM.Grass)
+	-- Farm island sand base (matches the FarmIsland part at cx=0, cz=850).
+	-- Earlier this was painted at Z=375 — completely outside the farm island —
+	-- and the Grass layer at the water surface was rendering blades on the
+	-- racing channel water (CP1 sits at Z=0). Terrain blades survive
+	-- MapManager's part visibility toggle, so playtest saw "swamp grass"
+	-- on the OCEAN water during racing.
+	_fillBox(0, -4, 850, 200, 8, 280, TM.Sand)
 
 	-- Coral reef decorations (shallow rocks near track)
 	local rng = Random.new(55)
@@ -100,10 +104,10 @@ local function _paintOcean()
 		_fillSphere(rx, -12, rz, rr, TM.Rock)
 	end
 
-	-- Sandy shallows near island
+	-- Sandy shallows near the farm island, NOT in the racing channel.
 	for _ = 1, 15 do
 		local sx = rng:NextNumber(-120, 120)
-		local sz = rng:NextNumber(200, 550)
+		local sz = rng:NextNumber(700, 1000)
 		_fillSphere(sx, -5, sz, rng:NextNumber(5, 12), TM.Sand)
 	end
 
